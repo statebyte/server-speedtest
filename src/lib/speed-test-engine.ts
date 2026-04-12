@@ -51,11 +51,21 @@ function jitterMs(values: readonly number[]): number | null {
   return sum / (values.length - 1);
 }
 
-function percentile(values: readonly number[], p: number): number | null {
-  if (values.length === 0) return null;
-  const s = [...values].sort((a, b) => a - b);
-  const idx = Math.min(s.length - 1, Math.floor(p * (s.length - 1)));
-  return s[idx]!;
+/**
+ * Effective throughput for a sequence of transfers: total bits / total network time.
+ * Not the mean of per-request bps (which distorts when sizes differ).
+ */
+function aggregateThroughputBps(points: readonly BandwidthPoint[]): number | null {
+  if (points.length === 0) return null;
+  let totalBits = 0;
+  let totalNetSeconds = 0;
+  for (const p of points) {
+    const netMs = Math.max(1, p.durationMs - p.serverTimeMs);
+    totalBits += p.bytes * 8;
+    totalNetSeconds += netMs / 1000;
+  }
+  if (totalNetSeconds <= 0) return null;
+  return totalBits / totalNetSeconds;
 }
 
 /** Browsers cap `crypto.getRandomValues` to 65536 bytes per call (Web Crypto). */
@@ -109,11 +119,8 @@ export class SpeedTestEngine {
   }
 
   getResults(): SpeedTestResults {
-    const downBpsList = this.downloadPoints.map((p) => p.bps);
-    const upBpsList = this.uploadPoints.map((p) => p.bps);
-
-    const downloadBps = downBpsList.length ? percentile(downBpsList, 0.9) : null;
-    const uploadBps = upBpsList.length ? percentile(upBpsList, 0.9) : null;
+    const downloadBps = aggregateThroughputBps(this.downloadPoints);
+    const uploadBps = aggregateThroughputBps(this.uploadPoints);
 
     const unloadedVals = this.unloadedLatencyPoints.map((p) => p.ms);
     const downLoadedVals = this.downLoadedLatencyPoints.map((p) => p.ms);
