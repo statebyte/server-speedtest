@@ -1,0 +1,9 @@
+services:
+  speedtest:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      SERVER_HOSTNAME: speedtest
+    restart: unless-stopped

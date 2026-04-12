@@ -49,6 +49,9 @@
 }
 
 :root {
+  --font-sans: var(--font-geist-sans);
+  --speed-download: oklch(0.68 0.19 45);
+  --speed-upload: oklch(0.58 0.18 305);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -84,6 +87,8 @@
 }
 
 .dark {
+  --speed-download: oklch(0.72 0.17 50);
+  --speed-upload: oklch(0.62 0.16 300);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);

@@ -1,0 +1,435 @@
+import { computeNetworkQuality } from "@/lib/network-quality";
+import type {
+  BandwidthPoint,
+  LatencyPoint,
+  MeasurementStep,
+  PacketLossResult,
+  SpeedTestResults,
+} from "@/types";
+
+export const DEFAULT_MEASUREMENT_STEPS: readonly MeasurementStep[] = [
+  { type: "latency", count: 1 },
+  { type: "download", bytes: 100_000, count: 1 },
+  { type: "latency", count: 20 },
+  { type: "download", bytes: 100_000, count: 9 },
+  { type: "download", bytes: 1_000_000, count: 8 },
+  { type: "upload", bytes: 100_000, count: 8 },
+  { type: "upload", bytes: 1_000_000, count: 6 },
+  { type: "download", bytes: 10_000_000, count: 6 },
+  { type: "upload", bytes: 10_000_000, count: 4 },
+  { type: "download", bytes: 25_000_000, count: 4 },
+  { type: "upload", bytes: 25_000_000, count: 4 },
+  { type: "packetLoss", count: 80, timeoutMs: 2500 },
+] as const;
+
+function parseServerTimingDurMs(headers: Headers): number {
+  const st = headers.get("server-timing");
+  if (!st) return 0;
+  for (const segment of st.split(",")) {
+    const m = segment.match(/dur=([0-9.]+)/);
+    if (m) {
+      const v = Number.parseFloat(m[1]);
+      return Number.isFinite(v) ? v : 0;
+    }
+  }
+  return 0;
+}
+
+function median(values: readonly number[]): number | null {
+  if (values.length === 0) return null;
+  const s = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 === 1 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
+}
+
+function jitterMs(values: readonly number[]): number | null {
+  if (values.length < 2) return null;
+  let sum = 0;
+  for (let i = 1; i < values.length; i++) {
+    sum += Math.abs(values[i]! - values[i - 1]!);
+  }
+  return sum / (values.length - 1);
+}
+
+function percentile(values: readonly number[], p: number): number | null {
+  if (values.length === 0) return null;
+  const s = [...values].sort((a, b) => a - b);
+  const idx = Math.min(s.length - 1, Math.floor(p * (s.length - 1)));
+  return s[idx]!;
+}
+
+/** Browsers cap `crypto.getRandomValues` to 65536 bytes per call (Web Crypto). */
+const CRYPTO_GET_RANDOM_VALUES_MAX_BYTES = 65536;
+
+function randomBuffer(bytes: number): ArrayBuffer {
+  const u8 = new Uint8Array(bytes);
+  let offset = 0;
+  while (offset < bytes) {
+    const chunkSize = Math.min(CRYPTO_GET_RANDOM_VALUES_MAX_BYTES, bytes - offset);
+    crypto.getRandomValues(u8.subarray(offset, offset + chunkSize));
+    offset += chunkSize;
+  }
+  return u8.buffer;
+}
+
+export class SpeedTestEngine {
+  private readonly steps: readonly MeasurementStep[];
+  private running = false;
+  private paused = false;
+  private abort = false;
+  private fetchController: AbortController | null = null;
+
+  private downloadPoints: BandwidthPoint[] = [];
+  private uploadPoints: BandwidthPoint[] = [];
+  private unloadedLatencyPoints: LatencyPoint[] = [];
+  private downLoadedLatencyPoints: LatencyPoint[] = [];
+  private upLoadedLatencyPoints: LatencyPoint[] = [];
+  private realtimeSeries: {
+    t: number;
+    downloadMbps: number | null;
+    uploadMbps: number | null;
+  }[] = [];
+  private lastPacketLoss: PacketLossResult | null = null;
+
+  onRunningChange?: (running: boolean) => void;
+  onResultsChange?: () => void;
+  onFinish?: (results: SpeedTestResults) => void;
+  onError?: (message: string) => void;
+
+  constructor(steps: readonly MeasurementStep[] = DEFAULT_MEASUREMENT_STEPS) {
+    this.steps = steps;
+  }
+
+  get isRunning(): boolean {
+    return this.running;
+  }
+
+  get isPaused(): boolean {
+    return this.paused;
+  }
+
+  getResults(): SpeedTestResults {
+    const downBpsList = this.downloadPoints.map((p) => p.bps);
+    const upBpsList = this.uploadPoints.map((p) => p.bps);
+
+    const downloadBps = downBpsList.length ? percentile(downBpsList, 0.9) : null;
+    const uploadBps = upBpsList.length ? percentile(upBpsList, 0.9) : null;
+
+    const unloadedVals = this.unloadedLatencyPoints.map((p) => p.ms);
+    const downLoadedVals = this.downLoadedLatencyPoints.map((p) => p.ms);
+    const upLoadedVals = this.upLoadedLatencyPoints.map((p) => p.ms);
+
+    const unloadedLatencyMs = median(unloadedVals);
+    const downLoadedLatencyMs = median(downLoadedVals);
+    const upLoadedLatencyMs = median(upLoadedVals);
+
+    const unloadedJitterMs = jitterMs(unloadedVals);
+    const downLoadedJitterMs = jitterMs(downLoadedVals);
+    const upLoadedJitterMs = jitterMs(upLoadedVals);
+
+    const networkQuality =
+      downloadBps != null || uploadBps != null
+        ? computeNetworkQuality({
+            downloadMbps: downloadBps != null ? downloadBps / 1e6 : null,
+            uploadMbps: uploadBps != null ? uploadBps / 1e6 : null,
+            unloadedLatencyMs,
+          })
+        : null;
+
+    return {
+      downloadBps,
+      uploadBps,
+      unloadedLatencyMs,
+      unloadedJitterMs,
+      downLoadedLatencyMs,
+      downLoadedJitterMs,
+      upLoadedLatencyMs,
+      upLoadedJitterMs,
+      packetLoss: this.lastPacketLoss,
+      downloadPoints: this.downloadPoints,
+      uploadPoints: this.uploadPoints,
+      unloadedLatencyPoints: this.unloadedLatencyPoints,
+      downLoadedLatencyPoints: this.downLoadedLatencyPoints,
+      upLoadedLatencyPoints: this.upLoadedLatencyPoints,
+      networkQuality,
+      realtimeSeries: this.realtimeSeries,
+    };
+  }
+
+  private emitChange(): void {
+    this.onResultsChange?.();
+  }
+
+  private pushRealtime(downloadBps: number | null, uploadBps: number | null): void {
+    this.realtimeSeries = [
+      ...this.realtimeSeries,
+      {
+        t: performance.now(),
+        downloadMbps: downloadBps != null ? downloadBps / 1e6 : null,
+        uploadMbps: uploadBps != null ? uploadBps / 1e6 : null,
+      },
+    ];
+    this.emitChange();
+  }
+
+  private async waitIfPaused(): Promise<void> {
+    while (this.paused && !this.abort) {
+      await new Promise((r) => setTimeout(r, 80));
+    }
+  }
+
+  private signal(): AbortSignal | undefined {
+    return this.fetchController?.signal;
+  }
+
+  async measurePing(): Promise<number> {
+    const t0 = performance.now();
+    const res = await fetch("/api/ping", {
+      cache: "no-store",
+      method: "GET",
+      signal: this.signal(),
+    });
+    if (!res.ok && res.status !== 204) {
+      throw new Error(`Ping failed: ${res.status}`);
+    }
+    return performance.now() - t0;
+  }
+
+  private async measureDownloadOnce(bytes: number): Promise<void> {
+    await this.waitIfPaused();
+    if (this.abort) return;
+
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+    const intervalMs = bytes >= 1_000_000 ? 120 : 0;
+
+    if (intervalMs > 0) {
+      intervalId = setInterval(() => {
+        void this.measurePing()
+          .then((ms) => {
+            this.downLoadedLatencyPoints = [
+              ...this.downLoadedLatencyPoints,
+              { ms, index: this.downLoadedLatencyPoints.length },
+            ];
+            this.emitChange();
+          })
+          .catch(() => {});
+      }, intervalMs);
+    }
+
+    const t0 = performance.now();
+    const res = await fetch(`/api/download?bytes=${bytes}`, {
+      cache: "no-store",
+      signal: this.signal(),
+    });
+    if (!res.ok) {
+      if (intervalId) clearInterval(intervalId);
+      throw new Error(`Download failed: ${res.status}`);
+    }
+    const buf = await res.arrayBuffer();
+    if (intervalId) clearInterval(intervalId);
+
+    const totalMs = performance.now() - t0;
+    const serverMs = parseServerTimingDurMs(res.headers);
+    const netMs = Math.max(1, totalMs - serverMs);
+    const bps = (buf.byteLength * 8) / (netMs / 1000);
+
+    this.downloadPoints = [
+      ...this.downloadPoints,
+      {
+        bytes,
+        bps,
+        durationMs: totalMs,
+        serverTimeMs: serverMs,
+        index: this.downloadPoints.length,
+      },
+    ];
+    this.pushRealtime(bps, null);
+    this.emitChange();
+  }
+
+  private async measureUploadOnce(bytes: number): Promise<void> {
+    await this.waitIfPaused();
+    if (this.abort) return;
+
+    const body = randomBuffer(bytes);
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+    const intervalMs = bytes >= 1_000_000 ? 120 : 0;
+
+    if (intervalMs > 0) {
+      intervalId = setInterval(() => {
+        void this.measurePing()
+          .then((ms) => {
+            this.upLoadedLatencyPoints = [
+              ...this.upLoadedLatencyPoints,
+              { ms, index: this.upLoadedLatencyPoints.length },
+            ];
+            this.emitChange();
+          })
+          .catch(() => {});
+      }, intervalMs);
+    }
+
+    const t0 = performance.now();
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body,
+      headers: { "Content-Type": "application/octet-stream" },
+      cache: "no-store",
+      signal: this.signal(),
+    });
+    if (intervalId) clearInterval(intervalId);
+
+    if (!res.ok) {
+      throw new Error(`Upload failed: ${res.status}`);
+    }
+
+    const json = (await res.json()) as { serverTimeMs?: number };
+    const totalMs = performance.now() - t0;
+    const serverMs =
+      typeof json.serverTimeMs === "number"
+        ? json.serverTimeMs
+        : parseServerTimingDurMs(res.headers);
+    const netMs = Math.max(1, totalMs - serverMs);
+    const bps = (bytes * 8) / (netMs / 1000);
+
+    this.uploadPoints = [
+      ...this.uploadPoints,
+      {
+        bytes,
+        bps,
+        durationMs: totalMs,
+        serverTimeMs: serverMs,
+        index: this.uploadPoints.length,
+      },
+    ];
+    this.pushRealtime(null, bps);
+    this.emitChange();
+  }
+
+  private async runPacketLoss(count: number, timeoutMs: number): Promise<void> {
+    await this.waitIfPaused();
+    if (this.abort) return;
+
+    const missing: number[] = [];
+    let received = 0;
+
+    for (let i = 0; i < count; i++) {
+      if (this.abort) return;
+      await this.waitIfPaused();
+      const controller = new AbortController();
+      const id = window.setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch("/api/ping", {
+          cache: "no-store",
+          method: "GET",
+          signal: controller.signal,
+        });
+        window.clearTimeout(id);
+        if (this.abort) return;
+        if (res.ok || res.status === 204) {
+          received += 1;
+        } else {
+          missing.push(i);
+        }
+      } catch {
+        window.clearTimeout(id);
+        missing.push(i);
+      }
+    }
+
+    const lost = count - received;
+    const ratio = count > 0 ? lost / count : 0;
+
+    this.lastPacketLoss = {
+      sent: count,
+      received,
+      lost,
+      ratio,
+      missingIndices: missing,
+    };
+    this.emitChange();
+  }
+
+  pause(): void {
+    if (!this.running) return;
+    this.paused = true;
+    this.emitChange();
+  }
+
+  resume(): void {
+    if (!this.running) return;
+    this.paused = false;
+    this.emitChange();
+  }
+
+  restart(): void {
+    this.fetchController?.abort();
+    this.abort = true;
+    this.running = false;
+    this.paused = false;
+    this.downloadPoints = [];
+    this.uploadPoints = [];
+    this.unloadedLatencyPoints = [];
+    this.downLoadedLatencyPoints = [];
+    this.upLoadedLatencyPoints = [];
+    this.realtimeSeries = [];
+    this.lastPacketLoss = null;
+    this.abort = false;
+    this.emitChange();
+    void this.play();
+  }
+
+  async play(): Promise<void> {
+    if (this.running) return;
+    this.fetchController = new AbortController();
+    this.running = true;
+    this.paused = false;
+    this.abort = false;
+    this.onRunningChange?.(true);
+
+    try {
+      for (const step of this.steps) {
+        if (this.abort) break;
+        if (step.type === "latency") {
+          for (let i = 0; i < step.count; i++) {
+            if (this.abort) break;
+            await this.waitIfPaused();
+            const ms = await this.measurePing();
+            this.unloadedLatencyPoints = [
+              ...this.unloadedLatencyPoints,
+              { ms, index: this.unloadedLatencyPoints.length },
+            ];
+            this.emitChange();
+          }
+        } else if (step.type === "download") {
+          for (let i = 0; i < step.count; i++) {
+            if (this.abort) break;
+            await this.measureDownloadOnce(step.bytes);
+          }
+        } else if (step.type === "upload") {
+          for (let i = 0; i < step.count; i++) {
+            if (this.abort) break;
+            await this.measureUploadOnce(step.bytes);
+          }
+        } else if (step.type === "packetLoss") {
+          await this.runPacketLoss(step.count, step.timeoutMs);
+        }
+      }
+
+      const results = this.getResults();
+      this.onFinish?.(results);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") {
+        // cancelled by restart — not an error
+      } else {
+        const message = e instanceof Error ? e.message : "Speed test failed";
+        this.onError?.(message);
+      }
+    } finally {
+      this.running = false;
+      this.paused = false;
+      this.onRunningChange?.(false);
+      this.emitChange();
+    }
+  }
+}
