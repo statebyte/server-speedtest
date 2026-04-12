@@ -32,7 +32,8 @@ export function PacketLossMeasurements({ packetLoss }: PacketLossMeasurementsPro
       <h2 className="text-sm font-semibold tracking-tight">Packet Loss Measurements</h2>
       {!packetLoss ? (
         <p className="text-sm text-muted-foreground">
-          Packet loss is estimated from rapid ping requests to this server.
+          Packet loss uses 1000 unreliable WebRTC data channel messages (UDP under ICE) echoed
+          by this server.
         </p>
       ) : (
         <div className="space-y-4">

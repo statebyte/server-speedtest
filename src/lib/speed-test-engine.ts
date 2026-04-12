@@ -19,7 +19,7 @@ export const DEFAULT_MEASUREMENT_STEPS: readonly MeasurementStep[] = [
   { type: "upload", bytes: 10_000_000, count: 4 },
   { type: "download", bytes: 25_000_000, count: 4 },
   { type: "upload", bytes: 25_000_000, count: 4 },
-  { type: "packetLoss", count: 80, timeoutMs: 2500 },
+  { type: "packetLoss", count: 1000, timeoutMs: 6000 },
 ] as const;
 
 function parseServerTimingDurMs(headers: Headers): number {
@@ -313,38 +313,113 @@ export class SpeedTestEngine {
     this.emitChange();
   }
 
-  private async runPacketLoss(count: number, timeoutMs: number): Promise<void> {
+  /**
+   * Packet loss over WebRTC DataChannel (unordered, maxRetransmits: 0 when supported).
+   * Media path uses UDP under ICE; browsers cannot send raw UDP from JS.
+   */
+  private async runPacketLoss(count: number, echoWaitMs: number): Promise<void> {
     await this.waitIfPaused();
     if (this.abort) return;
 
-    const missing: number[] = [];
-    let received = 0;
+    const sessionId = crypto.randomUUID();
+    const iceServers: RTCIceServer[] = [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+    ];
 
-    for (let i = 0; i < count; i++) {
-      if (this.abort) return;
-      await this.waitIfPaused();
-      const controller = new AbortController();
-      const id = window.setTimeout(() => controller.abort(), timeoutMs);
+    const pc = new RTCPeerConnection({ iceServers });
+    let dc: RTCDataChannel;
+    const receivedSeq = new Set<number>();
+
+    try {
       try {
-        const res = await fetch("/api/ping", {
-          cache: "no-store",
-          method: "GET",
-          signal: controller.signal,
+        dc = pc.createDataChannel("loss", {
+          ordered: false,
+          maxRetransmits: 0,
         });
-        window.clearTimeout(id);
-        if (this.abort) return;
-        if (res.ok || res.status === 204) {
-          received += 1;
-        } else {
-          missing.push(i);
-        }
       } catch {
-        window.clearTimeout(id);
+        dc = pc.createDataChannel("loss", { ordered: false });
+      }
+
+      dc.binaryType = "arraybuffer";
+      dc.onmessage = (ev: MessageEvent<ArrayBuffer>) => {
+        try {
+          const seq = new DataView(ev.data).getUint32(0, false);
+          if (seq >= 0 && seq < count) {
+            receivedSeq.add(seq);
+          }
+        } catch {
+          /* ignore */
+        }
+      };
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await this.waitIceGatheringBrowser(pc);
+
+      const res = await fetch("/api/webrtc/offer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          offer: {
+            type: pc.localDescription?.type,
+            sdp: pc.localDescription?.sdp,
+          },
+        }),
+        cache: "no-store",
+        signal: this.signal(),
+      });
+
+      if (!res.ok) {
+        const detail = await res.text();
+        throw new Error(`WebRTC setup failed (${res.status}): ${detail}`);
+      }
+
+      const body = (await res.json()) as { answer?: RTCSessionDescriptionInit };
+      if (!body.answer?.sdp) {
+        throw new Error("WebRTC: missing answer SDP");
+      }
+
+      await pc.setRemoteDescription(body.answer);
+      await this.waitDataChannelOpen(dc);
+
+      const packetSize = 64;
+      for (let i = 0; i < count; i++) {
+        if (this.abort) break;
+        await this.waitIfPaused();
+        const buf = new ArrayBuffer(packetSize);
+        new DataView(buf).setUint32(0, i, false);
+        crypto.getRandomValues(new Uint8Array(buf, 4, packetSize - 4));
+        dc.send(buf);
+      }
+
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, echoWaitMs);
+      });
+    } finally {
+      void fetch("/api/webrtc/close", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+        keepalive: true,
+      }).catch(() => {});
+      try {
+        pc.close();
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const missing: number[] = [];
+    for (let i = 0; i < count; i++) {
+      if (!receivedSeq.has(i)) {
         missing.push(i);
       }
     }
 
-    const lost = count - received;
+    const received = count - missing.length;
+    const lost = missing.length;
     const ratio = count > 0 ? lost / count : 0;
 
     this.lastPacketLoss = {
@@ -355,6 +430,44 @@ export class SpeedTestEngine {
       missingIndices: missing,
     };
     this.emitChange();
+  }
+
+  private waitIceGatheringBrowser(pc: RTCPeerConnection): Promise<void> {
+    if (pc.iceGatheringState === "complete") {
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      const done = () => {
+        if (pc.iceGatheringState === "complete") {
+          pc.removeEventListener("icegatheringstatechange", done);
+          resolve();
+        }
+      };
+      pc.addEventListener("icegatheringstatechange", done);
+      setTimeout(() => {
+        pc.removeEventListener("icegatheringstatechange", done);
+        resolve();
+      }, 12_000);
+    });
+  }
+
+  private waitDataChannelOpen(dc: RTCDataChannel): Promise<void> {
+    if (dc.readyState === "open") {
+      return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+      const t = window.setTimeout(() => {
+        reject(new Error("Data channel open timeout"));
+      }, 20_000);
+      dc.onopen = () => {
+        window.clearTimeout(t);
+        resolve();
+      };
+      dc.onerror = () => {
+        window.clearTimeout(t);
+        reject(new Error("Data channel error"));
+      };
+    });
   }
 
   pause(): void {
