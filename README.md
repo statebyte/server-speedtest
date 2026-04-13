@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Server Speedtest
 
-## Getting Started
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-First, run the development server:
+A web app for measuring network performance **against the server that hosts it**: download, upload, latency, jitter, packet loss, and a channel quality score. Built with **Next.js** (App Router), **WebRTC** (`@roamhq/wrtc`) for load-style measurements, **HTTP** for ping/jitter, **React** + **Tailwind CSS** for the UI, and **Leaflet** for the map. **English** and **Russian** locales.
+
+## Screenshot
+
+<p align="center">
+  <img src="docs/screenshot.png" alt="Server Speedtest UI: live results, chart, and server location map" width="920">
+</p>
+
+## Features
+
+- **Download / upload** over a WebRTC data channel with a real-time chart  
+- **Latency**, **jitter**, and **packet loss**  
+- **Network Quality Score** and session summary  
+- **Server vs. you** map (great-circle path; the UI explains the straight map segment)  
+- Dark/light theme and language switcher  
+
+## Quick start (development)
+
+Requires **Node.js 22+** (same major as the Docker image) and npm.
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Production build and run:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+Lint:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run lint
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Docker
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Build and run with Compose (HTTP on the port from `.env` or **3000**, UDP **10000–10099** for ICE, as in `docker-compose.yaml`):
 
-## Deploy on Vercel
+```bash
+docker compose up --build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Optionally set `HOST_PORT` in `.env` and align **`WRTC_ICE_UDP_PORT_MIN`** / **`WRTC_ICE_UDP_PORT_MAX`** with your published UDP range on the host and in Compose.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## API layout (overview)
+
+Routes under `src/app/api/` power the measurements (including `webrtc/offer`, `download`, `upload`, `ping`, `server-info`, and others)—see the repository code for details.
+
+## License
+
+[MIT](LICENSE)
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=StateByte/server-speedtest&type=Date)](https://star-history.com/#StateByte/server-speedtest&Date)
+
+Author in `package.json`: **@statebyte**.

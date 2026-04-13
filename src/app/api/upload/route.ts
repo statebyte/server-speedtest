@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
-  const t0 = performance.now();
   const buf = await request.arrayBuffer();
+  const t0 = performance.now();
+  const bytes = buf.byteLength;
   const serverMs = performance.now() - t0;
 
   return NextResponse.json(
-    { bytes: buf.byteLength, serverTimeMs: serverMs },
+    { bytes, serverTimeMs: serverMs },
     {
       status: 200,
       headers: {
