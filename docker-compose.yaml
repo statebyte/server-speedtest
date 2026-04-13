@@ -3,7 +3,11 @@ services:
     build: .
     ports:
       - "3000:3000"
+      # WebRTC ICE uses UDP; map the same range as WRTC_ICE_UDP_* on the server.
+      - "10000-10099:10000-10099/udp"
     environment:
       NODE_ENV: production
       SERVER_HOSTNAME: speedtest
+      WRTC_ICE_UDP_PORT_MIN: "10000"
+      WRTC_ICE_UDP_PORT_MAX: "10099"
     restart: unless-stopped

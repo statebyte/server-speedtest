@@ -387,6 +387,10 @@ export class SpeedTestEngine {
       }
 
       await pc.setRemoteDescription(body.answer);
+      await this.waitIceConnectionEstablished(pc, {
+        timeoutMs: openTimeoutMs,
+        signal: this.signal(),
+      });
       await this.waitDataChannelOpen(dc, {
         timeoutMs: openTimeoutMs,
         signal: this.signal(),
@@ -456,6 +460,70 @@ export class SpeedTestEngine {
         pc.removeEventListener("icegatheringstatechange", done);
         resolve();
       }, 12_000);
+    });
+  }
+
+  /**
+   * SCTP/data channel only opens after ICE reaches a working state; without this,
+   * failures surface as a generic data-channel open timeout.
+   */
+  private waitIceConnectionEstablished(
+    pc: RTCPeerConnection,
+    options: { readonly timeoutMs: number; readonly signal?: AbortSignal },
+  ): Promise<void> {
+    const { timeoutMs, signal } = options;
+    if (signal?.aborted) {
+      return Promise.reject(new DOMException("Aborted", "AbortError"));
+    }
+    const state = pc.iceConnectionState;
+    if (state === "connected" || state === "completed") {
+      return Promise.resolve();
+    }
+    if (state === "failed" || state === "closed") {
+      return Promise.reject(new Error(`WebRTC ICE failed (state=${state})`));
+    }
+
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const cleanup = () => {
+        settled = true;
+        window.clearTimeout(t);
+        signal?.removeEventListener("abort", onAbort);
+        pc.removeEventListener("iceconnectionstatechange", onIce);
+      };
+
+      const finish = (action: () => void) => {
+        if (settled) return;
+        cleanup();
+        action();
+      };
+
+      const t = window.setTimeout(() => {
+        finish(() =>
+          reject(
+            new Error(
+              `WebRTC ICE connection timeout (state=${pc.iceConnectionState})`,
+            ),
+          ),
+        );
+      }, timeoutMs);
+
+      const onAbort = () => {
+        finish(() => reject(new DOMException("Aborted", "AbortError")));
+      };
+
+      const onIce = () => {
+        const s = pc.iceConnectionState;
+        if (s === "connected" || s === "completed") {
+          finish(() => resolve());
+        } else if (s === "failed" || s === "closed") {
+          finish(() => reject(new Error(`WebRTC ICE failed (state=${s})`)));
+        }
+      };
+
+      signal?.addEventListener("abort", onAbort, { once: true });
+      pc.addEventListener("iceconnectionstatechange", onIce);
+      onIce();
     });
   }
 

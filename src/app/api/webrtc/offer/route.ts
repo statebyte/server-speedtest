@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createNodeWebRtcPeerConnectionConfig } from "@/lib/webrtc-node-peer-config";
 import { registerWebRtcPeer } from "@/lib/webrtc-peer-registry";
 
 export const runtime = "nodejs";
@@ -45,12 +46,9 @@ export async function POST(request: Request) {
 
   try {
     const wrtc = await import("@roamhq/wrtc");
-    const iceServers: RTCIceServer[] = [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" },
-    ];
+    const rtcConfig = createNodeWebRtcPeerConnectionConfig();
 
-    pc = new wrtc.RTCPeerConnection({ iceServers });
+    pc = new wrtc.RTCPeerConnection(rtcConfig);
 
     pc.ondatachannel = (event: { channel: RTCDataChannel }) => {
       const dc = event.channel;

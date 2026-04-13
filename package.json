@@ -1,7 +1,10 @@
 {
   "name": "server-speedtest",
   "version": "1.0.0",
+  "description": "Server Speedtest",
+  "author": "@statebyte <Omar El Sayed>",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
