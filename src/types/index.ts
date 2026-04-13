@@ -1,4 +1,5 @@
-export type QualityLabel = "Poor" | "Low" | "Average" | "Good" | "Excellent";
+/** Stable keys for i18n (see `quality.*` translation keys). */
+export type QualityLabel = "poor" | "low" | "average" | "good" | "excellent";
 
 export interface BandwidthPoint {
   readonly bytes: number;
@@ -54,6 +55,10 @@ export interface ServerInfo {
   readonly serverLat: number | null;
   readonly serverLon: number | null;
   readonly clientIp: string | null;
+  readonly clientCity: string | null;
+  readonly clientCountry: string | null;
+  readonly clientLat: number | null;
+  readonly clientLon: number | null;
   readonly protocol: string;
 }
 

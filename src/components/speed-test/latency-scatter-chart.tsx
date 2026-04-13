@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { CartesianGrid, Scatter, ScatterChart, XAxis, YAxis } from "recharts";
 import type { LatencyPoint } from "@/types";
 import {
@@ -20,6 +21,7 @@ export function LatencyScatterChart({
   colorVar,
   label,
 }: LatencyScatterChartProps) {
+  const { t } = useTranslation();
   const chartConfig = {
     y: { label, color: colorVar },
   } satisfies ChartConfig;
@@ -32,7 +34,7 @@ export function LatencyScatterChart({
   if (data.length === 0) {
     return (
       <div className="flex h-[140px] items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground">
-        No samples
+        {t("charts.noSamples")}
       </div>
     );
   }
@@ -41,7 +43,13 @@ export function LatencyScatterChart({
     <ChartContainer config={chartConfig} className="h-[160px] w-full">
       <ScatterChart margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-border/60" />
-        <XAxis type="number" dataKey="x" name="Sample" tickLine={false} axisLine={false} />
+        <XAxis
+          type="number"
+          dataKey="x"
+          name={t("charts.sample")}
+          tickLine={false}
+          axisLine={false}
+        />
         <YAxis
           type="number"
           dataKey="y"

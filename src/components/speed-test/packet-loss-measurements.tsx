@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import type { PacketLossResult } from "@/types";
 import { formatPercent } from "@/lib/formatters";
 import {
@@ -16,6 +17,7 @@ interface PacketLossMeasurementsProps {
 }
 
 export function PacketLossMeasurements({ packetLoss }: PacketLossMeasurementsProps) {
+  const { t } = useTranslation();
   const receivedPct = packetLoss
     ? (packetLoss.received / Math.max(1, packetLoss.sent)) * 100
     : 0;
@@ -29,18 +31,15 @@ export function PacketLossMeasurements({ packetLoss }: PacketLossMeasurementsPro
 
   return (
     <section className="space-y-4">
-      <h2 className="text-sm font-semibold tracking-tight">Packet Loss Measurements</h2>
+      <h2 className="text-sm font-semibold tracking-tight">{t("packetLoss.title")}</h2>
       {!packetLoss ? (
-        <p className="text-sm text-muted-foreground">
-          Packet loss uses 1000 unreliable WebRTC data channel messages (UDP under ICE) echoed
-          by this server.
-        </p>
+        <p className="text-sm text-muted-foreground">{t("packetLoss.explainer")}</p>
       ) : (
         <div className="space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Received</span>
-              <span>Lost</span>
+              <span>{t("packetLoss.received")}</span>
+              <span>{t("packetLoss.lost")}</span>
             </div>
             <div className="relative h-3 overflow-hidden rounded-full bg-emerald-500/20">
               <div
@@ -57,26 +56,26 @@ export function PacketLossMeasurements({ packetLoss }: PacketLossMeasurementsPro
             </div>
             <div className="flex justify-between text-sm">
               <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                {formatPercent(receivedPct / 100)} received
+                {t("packetLoss.receivedPct", { value: formatPercent(receivedPct / 100) })}
               </span>
               <span className="font-medium text-red-600 dark:text-red-400">
-                {formatPercent(lostPct / 100)} lost
+                {t("packetLoss.lostPct", { value: formatPercent(lostPct / 100) })}
               </span>
             </div>
           </div>
 
           <div>
             <div className="mb-2 text-xs font-medium text-muted-foreground">
-              Missing messages (sample indices)
+              {t("packetLoss.missingTitle")}
             </div>
             {preview.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No missing packets.</p>
+              <p className="text-sm text-muted-foreground">{t("packetLoss.noMissing")}</p>
             ) : (
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Index</TableHead>
+                      <TableHead>{t("packetLoss.indexCol")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -89,7 +88,7 @@ export function PacketLossMeasurements({ packetLoss }: PacketLossMeasurementsPro
                 </Table>
                 {more > 0 ? (
                   <div className="border-t px-3 py-2 text-xs text-muted-foreground">
-                    +{more} more…
+                    {t("packetLoss.more", { count: more })}
                   </div>
                 ) : null}
               </div>

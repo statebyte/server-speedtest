@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import type { BandwidthPoint } from "@/types";
 import {
@@ -16,6 +17,7 @@ interface BandwidthChartProps {
 }
 
 export function BandwidthChart({ points, colorVar, label }: BandwidthChartProps) {
+  const { t } = useTranslation();
   const chartConfig = {
     ms: { label, color: colorVar },
   } satisfies ChartConfig;
@@ -29,7 +31,7 @@ export function BandwidthChart({ points, colorVar, label }: BandwidthChartProps)
   if (data.length === 0) {
     return (
       <div className="flex h-[140px] items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground">
-        No samples
+        {t("charts.noSamples")}
       </div>
     );
   }

@@ -64,9 +64,8 @@ export async function GET(request: NextRequest) {
   const envIp = process.env.SERVER_PUBLIC_IP?.trim() || null;
 
   const publicIp = envIp ?? (await fetchPublicIp());
-  const geo = await geoForIp(publicIp);
-
   const clientIp = getClientIp(request);
+  const [geo, clientGeo] = await Promise.all([geoForIp(publicIp), geoForIp(clientIp)]);
 
   return NextResponse.json({
     serverHostname,
@@ -76,6 +75,10 @@ export async function GET(request: NextRequest) {
     serverLat: geo.lat,
     serverLon: geo.lon,
     clientIp,
+    clientCity: clientGeo.city,
+    clientCountry: clientGeo.country,
+    clientLat: clientGeo.lat,
+    clientLon: clientGeo.lon,
     protocol: request.nextUrl.protocol.replace(":", ""),
   });
 }

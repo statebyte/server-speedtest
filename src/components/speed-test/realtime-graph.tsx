@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import type { SpeedTestResults } from "@/types";
 import {
@@ -9,22 +11,28 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 
-const chartConfig = {
-  download: {
-    label: "Download",
-    color: "var(--speed-download)",
-  },
-  upload: {
-    label: "Upload",
-    color: "var(--speed-upload)",
-  },
-} satisfies ChartConfig;
-
 interface RealtimeGraphProps {
   readonly results: SpeedTestResults;
 }
 
 export function RealtimeGraph({ results }: RealtimeGraphProps) {
+  const { t } = useTranslation();
+
+  const chartConfig = useMemo(
+    () =>
+      ({
+        download: {
+          label: t("realtime.download"),
+          color: "var(--speed-download)",
+        },
+        upload: {
+          label: t("realtime.upload"),
+          color: "var(--speed-upload)",
+        },
+      }) satisfies ChartConfig,
+    [t],
+  );
+
   const data = results.realtimeSeries.map((p, i) => ({
     step: i + 1,
     download: p.downloadMbps ?? undefined,
@@ -34,7 +42,7 @@ export function RealtimeGraph({ results }: RealtimeGraphProps) {
   if (data.length === 0) {
     return (
       <div className="flex h-[200px] items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
-        Start the test to see live throughput
+        {t("realtime.empty")}
       </div>
     );
   }
@@ -59,7 +67,12 @@ export function RealtimeGraph({ results }: RealtimeGraphProps) {
           axisLine={false}
           width={44}
           tickFormatter={(v) => `${v}`}
-          label={{ value: "Mbps", angle: -90, position: "insideLeft", offset: 10 }}
+          label={{
+            value: t("realtime.mbpsAxis"),
+            angle: -90,
+            position: "insideLeft",
+            offset: 10,
+          }}
         />
         <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
         <Area

@@ -14,20 +14,22 @@ export function useServerInfo(): {
 
   useEffect(() => {
     let cancelled = false;
-    setError(null);
     void fetch("/api/server-info", { cache: "no-store" })
       .then(async (res) => {
+        if (cancelled) return;
+        setError(null);
         if (!res.ok) {
-          throw new Error(`Server info failed (${res.status})`);
+          throw new Error(`SERVER_INFO:${res.status}`);
         }
         return (await res.json()) as ServerInfo;
       })
       .then((json) => {
-        if (!cancelled) setData(json);
+        if (!cancelled && json != null) setData(json);
       })
       .catch((e: unknown) => {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Failed to load server info");
+          const msg = e instanceof Error ? e.message : "NETWORK";
+          setError(msg.startsWith("SERVER_INFO:") || msg === "NETWORK" ? msg : "NETWORK");
         }
       });
     return () => {

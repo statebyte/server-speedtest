@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSpeedTest } from "@/hooks/use-speed-test";
@@ -14,16 +15,17 @@ import { SpeedSummary } from "@/components/speed-test/speed-summary";
 import { UploadMeasurements } from "@/components/speed-test/upload-measurements";
 
 export function SpeedTest() {
+  const { t } = useTranslation();
   const { results, running, paused, started, error, play, pause, resume, restart } =
     useSpeedTest();
 
   return (
     <div className="mx-auto max-w-7xl flex-1 space-y-6 px-4 py-8 sm:px-6 lg:px-8">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Your Internet Speed</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("app.title")}</h1>
         <p className="text-sm text-muted-foreground">
-          Measurements are taken against <span className="font-medium">this server</span>{" "}
-          (the host running this app).
+          {t("app.subtitle")}{" "}
+          <span className="font-medium">{t("app.subtitleEmphasis")}</span> {t("app.subtitleEnd")}
         </p>
       </div>
 
@@ -36,17 +38,16 @@ export function SpeedTest() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Live results</CardTitle>
+            <CardTitle className="text-base">{t("liveResults.title")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {!started ? (
               <div className="flex flex-col items-center justify-center gap-4 py-10">
                 <p className="max-w-md text-center text-sm text-muted-foreground">
-                  Press Start to run download, upload, latency, jitter, and packet loss checks
-                  against this deployment.
+                  {t("liveResults.idleHint")}
                 </p>
                 <Button size="lg" className="min-w-48" onClick={play}>
-                  Start
+                  {t("liveResults.start")}
                 </Button>
               </div>
             ) : (

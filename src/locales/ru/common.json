@@ -1,0 +1,125 @@
+{
+  "app": {
+    "title": "Скорость вашего интернета",
+    "subtitle": "Измерения выполняются относительно",
+    "subtitleEmphasis": "этого сервера",
+    "subtitleEnd": "(хоста, на котором запущено приложение)."
+  },
+  "header": {
+    "brand": "Тест скорости"
+  },
+  "footer": {
+    "copyright": "2026 @ statebyte"
+  },
+  "language": {
+    "label": "Язык",
+    "en": "English",
+    "ru": "Русский"
+  },
+  "errors": {
+    "serverInfo": "Не удалось загрузить сведения о сервере (HTTP {{status}}).",
+    "generic": "Не удалось загрузить сведения о сервере."
+  },
+  "liveResults": {
+    "title": "Результаты в реальном времени",
+    "idleHint": "Нажмите «Старт», чтобы запустить проверки загрузки, отдачи, задержки, джиттера и потери пакетов для этого развёртывания.",
+    "start": "Старт"
+  },
+  "serverLocation": {
+    "title": "Расположение сервера",
+    "connectedVia": "Подключение",
+    "server": "Сервер",
+    "hostname": "Имя хоста",
+    "yourIp": "Ваш IP",
+    "serverIp": "IP сервера",
+    "you": "Вы",
+    "serverMarker": "Сервер",
+    "midpointHint": "Середина отрезка (большой круг искривлён; на карте — прямая линия)",
+    "mapFallback": "Сервер"
+  },
+  "controls": {
+    "pause": "Пауза",
+    "resume": "Продолжить",
+    "retest": "Заново",
+    "radar": "Сравнить результаты на Radar",
+    "shareX": "Поделиться в X",
+    "shareFb": "Поделиться в Facebook",
+    "copyLink": "Копировать ссылку"
+  },
+  "speedSummary": {
+    "download": "Загрузка",
+    "upload": "Отдача",
+    "downloadTitle": "Скорость загрузки с этого сервера",
+    "uploadTitle": "Скорость отдачи на этот сервер",
+    "mbps": "Мбит/с",
+    "latency": "Задержка",
+    "jitter": "Джиттер",
+    "packetLoss": "Потеря пакетов",
+    "badgeUnloaded": "Без нагрузки {{value}}",
+    "badgeLoadedDown": "При загрузке {{value}}",
+    "badgeLoadedUp": "При отдаче {{value}}",
+    "jitterDown": "Вниз {{value}}",
+    "jitterUp": "Вверх {{value}}",
+    "packetsReceived": "{{received}} / {{sent}} получено",
+    "packetsPending": "Запустите тест для измерения"
+  },
+  "networkQuality": {
+    "title": "Оценка качества сети",
+    "empty": "Завершите тест, чтобы увидеть оценки качества.",
+    "streaming": "Видеостриминг",
+    "gaming": "Онлайн-игры",
+    "chatting": "Видеозвонки"
+  },
+  "quality": {
+    "poor": "Плохо",
+    "low": "Низко",
+    "average": "Средне",
+    "good": "Хорошо",
+    "excellent": "Отлично"
+  },
+  "downloadMeasurements": {
+    "title": "Измерения загрузки",
+    "empty": "Запустите тест, чтобы увидеть время по размерам.",
+    "perSize": "Загрузка {{size}} — длительность запроса (мс)",
+    "durationAxis": "Длительность (мс)"
+  },
+  "uploadMeasurements": {
+    "title": "Измерения отдачи",
+    "empty": "Запустите тест, чтобы увидеть время по размерам.",
+    "perSize": "Отдача {{size}} — длительность запроса (мс)",
+    "durationAxis": "Длительность (мс)"
+  },
+  "latencyMeasurements": {
+    "title": "Измерения задержки",
+    "unloaded": "Задержка без нагрузки",
+    "duringDownload": "Задержка при загрузке",
+    "duringUpload": "Задержка при отдаче"
+  },
+  "packetLoss": {
+    "title": "Потеря пакетов",
+    "explainer": "Потеря измеряется через 1000 ненадёжных сообщений канала данных WebRTC (UDP поверх ICE) с эхом от этого сервера.",
+    "received": "Получено",
+    "lost": "Потеряно",
+    "receivedPct": "{{value}} получено",
+    "lostPct": "{{value}} потеряно",
+    "missingTitle": "Пропущенные сообщения (примеры индексов)",
+    "noMissing": "Пропусков нет.",
+    "indexCol": "Индекс",
+    "more": "+{{count}} ещё"
+  },
+  "realtime": {
+    "empty": "Запустите тест, чтобы увидеть скорость в реальном времени",
+    "download": "Загрузка",
+    "upload": "Отдача",
+    "mbpsAxis": "Мбит/с"
+  },
+  "charts": {
+    "noSamples": "Нет выборки",
+    "sample": "Проба"
+  },
+  "theme": {
+    "light": "Светлая тема",
+    "dark": "Тёмная тема",
+    "system": "Как в системе"
+  }
+}

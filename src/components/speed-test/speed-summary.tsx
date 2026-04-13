@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowDown, ArrowUp, Info } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { SpeedTestResults } from "@/types";
 import { formatMbpsNumber, formatMs, formatPercent } from "@/lib/formatters";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,7 @@ interface SpeedSummaryProps {
 }
 
 export function SpeedSummary({ results }: SpeedSummaryProps) {
+  const { t } = useTranslation();
   const down = results.downloadBps;
   const up = results.uploadBps;
 
@@ -19,13 +21,13 @@ export function SpeedSummary({ results }: SpeedSummaryProps) {
       <div>
         <div className="mb-1 flex items-center gap-1 text-sm text-muted-foreground">
           <ArrowDown className="size-4" style={{ color: "var(--speed-download)" }} />
-          <span>Download</span>
+          <span>{t("speedSummary.download")}</span>
           <Button
             type="button"
             variant="ghost"
             size="icon-xs"
             className="h-6 w-6 text-muted-foreground"
-            title="Download speed to this server"
+            title={t("speedSummary.downloadTitle")}
           >
             <Info className="size-3.5" />
           </Button>
@@ -37,20 +39,20 @@ export function SpeedSummary({ results }: SpeedSummaryProps) {
           >
             {formatMbpsNumber(down)}
           </span>
-          <span className="text-lg text-muted-foreground">Mbps</span>
+          <span className="text-lg text-muted-foreground">{t("speedSummary.mbps")}</span>
         </div>
       </div>
 
       <div>
         <div className="mb-1 flex items-center gap-1 text-sm text-muted-foreground">
           <ArrowUp className="size-4" style={{ color: "var(--speed-upload)" }} />
-          <span>Upload</span>
+          <span>{t("speedSummary.upload")}</span>
           <Button
             type="button"
             variant="ghost"
             size="icon-xs"
             className="h-6 w-6 text-muted-foreground"
-            title="Upload speed to this server"
+            title={t("speedSummary.uploadTitle")}
           >
             <Info className="size-3.5" />
           </Button>
@@ -62,48 +64,53 @@ export function SpeedSummary({ results }: SpeedSummaryProps) {
           >
             {formatMbpsNumber(up)}
           </span>
-          <span className="text-lg text-muted-foreground">Mbps</span>
+          <span className="text-lg text-muted-foreground">{t("speedSummary.mbps")}</span>
         </div>
       </div>
 
       <div className="space-y-4 text-sm">
         <div>
-          <div className="text-muted-foreground">Latency</div>
+          <div className="text-muted-foreground">{t("speedSummary.latency")}</div>
           <div className="text-3xl font-semibold">
             {formatMs(results.unloadedLatencyMs, 0)}
           </div>
           <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
             <Badge variant="secondary" className="font-normal">
-              Unloaded {formatMs(results.unloadedLatencyMs, 0)}
+              {t("speedSummary.badgeUnloaded", { value: formatMs(results.unloadedLatencyMs, 0) })}
             </Badge>
             <Badge variant="secondary" className="font-normal">
-              Loaded down {formatMs(results.downLoadedLatencyMs, 0)}
+              {t("speedSummary.badgeLoadedDown", { value: formatMs(results.downLoadedLatencyMs, 0) })}
             </Badge>
             <Badge variant="secondary" className="font-normal">
-              Loaded up {formatMs(results.upLoadedLatencyMs, 0)}
+              {t("speedSummary.badgeLoadedUp", { value: formatMs(results.upLoadedLatencyMs, 0) })}
             </Badge>
           </div>
         </div>
         <div>
-          <div className="text-muted-foreground">Jitter</div>
+          <div className="text-muted-foreground">{t("speedSummary.jitter")}</div>
           <div className="text-2xl font-semibold">
             {formatMs(results.unloadedJitterMs)}
           </div>
           <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
-            <span>Down {formatMs(results.downLoadedJitterMs)}</span>
+            <span>
+              {t("speedSummary.jitterDown", { value: formatMs(results.downLoadedJitterMs) })}
+            </span>
             <span>·</span>
-            <span>Up {formatMs(results.upLoadedJitterMs)}</span>
+            <span>{t("speedSummary.jitterUp", { value: formatMs(results.upLoadedJitterMs) })}</span>
           </div>
         </div>
         <div>
-          <div className="text-muted-foreground">Packet Loss</div>
+          <div className="text-muted-foreground">{t("speedSummary.packetLoss")}</div>
           <div className="text-2xl font-semibold">
             {formatPercent(results.packetLoss?.ratio)}
           </div>
           <div className="text-xs text-muted-foreground">
             {results.packetLoss
-              ? `${results.packetLoss.received} / ${results.packetLoss.sent} received`
-              : "Run test to measure"}
+              ? t("speedSummary.packetsReceived", {
+                  received: results.packetLoss.received,
+                  sent: results.packetLoss.sent,
+                })
+              : t("speedSummary.packetsPending")}
           </div>
         </div>
       </div>

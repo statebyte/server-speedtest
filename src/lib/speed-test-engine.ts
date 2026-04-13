@@ -1,4 +1,5 @@
 import { computeNetworkQuality } from "@/lib/network-quality";
+import { randomUUID } from "@/lib/random-uuid";
 import type {
   BandwidthPoint,
   LatencyPoint,
@@ -321,7 +322,7 @@ export class SpeedTestEngine {
     await this.waitIfPaused();
     if (this.abort) return;
 
-    const sessionId = crypto.randomUUID();
+    const sessionId = randomUUID();
     const iceServers: RTCIceServer[] = [
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },

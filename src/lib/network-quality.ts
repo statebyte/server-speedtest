@@ -2,11 +2,11 @@ import type { NetworkQualityScores, QualityLabel } from "@/types";
 
 function labelFromScore(score: number): QualityLabel {
   const s = Math.min(100, Math.max(0, score));
-  if (s >= 85) return "Excellent";
-  if (s >= 70) return "Good";
-  if (s >= 50) return "Average";
-  if (s >= 30) return "Low";
-  return "Poor";
+  if (s >= 85) return "excellent";
+  if (s >= 70) return "good";
+  if (s >= 50) return "average";
+  if (s >= 30) return "low";
+  return "poor";
 }
 
 /**

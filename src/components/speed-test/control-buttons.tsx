@@ -1,6 +1,7 @@
 "use client";
 
 import { Link2, RotateCcw, Share2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ export function ControlButtons({
   onResume,
   onRestart,
 }: ControlButtonsProps) {
+  const { t } = useTranslation();
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
   const linkClass = cn(buttonVariants({ variant: "outline", size: "sm" }));
 
@@ -28,18 +30,18 @@ export function ControlButtons({
     <div className="flex flex-wrap items-center gap-2 pt-2">
       {started && running && !paused ? (
         <Button variant="outline" size="sm" onClick={onPause}>
-          Pause
+          {t("controls.pause")}
         </Button>
       ) : null}
       {started && running && paused ? (
         <Button variant="outline" size="sm" onClick={onResume}>
-          Resume
+          {t("controls.resume")}
         </Button>
       ) : null}
       {started ? (
         <Button variant="outline" size="sm" onClick={onRestart}>
           <RotateCcw className="size-3.5" />
-          Retest
+          {t("controls.retest")}
         </Button>
       ) : null}
       <a
@@ -48,16 +50,16 @@ export function ControlButtons({
         rel="noreferrer"
         className={linkClass}
       >
-        Compare your results on Radar
+        {t("controls.radar")}
       </a>
       <div className="ml-auto flex items-center gap-1">
         <a
           href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}`}
           target="_blank"
           rel="noreferrer"
-          aria-label="Share on X"
+          aria-label={t("controls.shareX")}
           className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
-          title="Share on X"
+          title={t("controls.shareX")}
         >
           <span className="text-xs font-semibold">𝕏</span>
         </a>
@@ -65,9 +67,9 @@ export function ControlButtons({
           href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
           target="_blank"
           rel="noreferrer"
-          aria-label="Share on Facebook"
+          aria-label={t("controls.shareFb")}
           className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
-          title="Share on Facebook"
+          title={t("controls.shareFb")}
         >
           <Share2 className="size-4" />
         </a>
@@ -75,8 +77,8 @@ export function ControlButtons({
           variant="ghost"
           size="icon-sm"
           type="button"
-          title="Copy link"
-          aria-label="Copy link"
+          title={t("controls.copyLink")}
+          aria-label={t("controls.copyLink")}
           onClick={() => void navigator.clipboard.writeText(shareUrl)}
         >
           <Link2 className="size-4" />

@@ -1,0 +1,125 @@
+{
+  "app": {
+    "title": "Your Internet Speed",
+    "subtitle": "Measurements are taken against",
+    "subtitleEmphasis": "this server",
+    "subtitleEnd": "(the host running this app)."
+  },
+  "header": {
+    "brand": "Speed Test"
+  },
+  "footer": {
+    "copyright": "2026 @ statebyte"
+  },
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "ru": "Русский"
+  },
+  "errors": {
+    "serverInfo": "Could not load server info (HTTP {{status}}).",
+    "generic": "Failed to load server info."
+  },
+  "liveResults": {
+    "title": "Live results",
+    "idleHint": "Press Start to run download, upload, latency, jitter, and packet loss checks against this deployment.",
+    "start": "Start"
+  },
+  "serverLocation": {
+    "title": "Server location",
+    "connectedVia": "Connected via",
+    "server": "Server",
+    "hostname": "Hostname",
+    "yourIp": "Your IP",
+    "serverIp": "Server IP",
+    "you": "You",
+    "serverMarker": "Server",
+    "midpointHint": "Midpoint (great-circle path is curved; map shows straight segment)",
+    "mapFallback": "Server"
+  },
+  "controls": {
+    "pause": "Pause",
+    "resume": "Resume",
+    "retest": "Retest",
+    "radar": "Compare your results on Radar",
+    "shareX": "Share on X",
+    "shareFb": "Share on Facebook",
+    "copyLink": "Copy link"
+  },
+  "speedSummary": {
+    "download": "Download",
+    "upload": "Upload",
+    "downloadTitle": "Download speed to this server",
+    "uploadTitle": "Upload speed to this server",
+    "mbps": "Mbps",
+    "latency": "Latency",
+    "jitter": "Jitter",
+    "packetLoss": "Packet Loss",
+    "badgeUnloaded": "Unloaded {{value}}",
+    "badgeLoadedDown": "Loaded down {{value}}",
+    "badgeLoadedUp": "Loaded up {{value}}",
+    "jitterDown": "Down {{value}}",
+    "jitterUp": "Up {{value}}",
+    "packetsReceived": "{{received}} / {{sent}} received",
+    "packetsPending": "Run test to measure"
+  },
+  "networkQuality": {
+    "title": "Network quality score",
+    "empty": "Complete the test to see quality scores.",
+    "streaming": "Video streaming",
+    "gaming": "Online gaming",
+    "chatting": "Video chatting"
+  },
+  "quality": {
+    "poor": "Poor",
+    "low": "Low",
+    "average": "Average",
+    "good": "Good",
+    "excellent": "Excellent"
+  },
+  "downloadMeasurements": {
+    "title": "Download measurements",
+    "empty": "Run the test to see per-size timings.",
+    "perSize": "{{size}} download — request duration (ms)",
+    "durationAxis": "Duration (ms)"
+  },
+  "uploadMeasurements": {
+    "title": "Upload measurements",
+    "empty": "Run the test to see per-size timings.",
+    "perSize": "{{size}} upload — request duration (ms)",
+    "durationAxis": "Duration (ms)"
+  },
+  "latencyMeasurements": {
+    "title": "Latency measurements",
+    "unloaded": "Unloaded latency",
+    "duringDownload": "Latency during download",
+    "duringUpload": "Latency during upload"
+  },
+  "packetLoss": {
+    "title": "Packet loss measurements",
+    "explainer": "Packet loss uses 1000 unreliable WebRTC data channel messages (UDP under ICE) echoed by this server.",
+    "received": "Received",
+    "lost": "Lost",
+    "receivedPct": "{{value}} received",
+    "lostPct": "{{value}} lost",
+    "missingTitle": "Missing messages (sample indices)",
+    "noMissing": "No missing packets.",
+    "indexCol": "Index",
+    "more": "+{{count}} more"
+  },
+  "realtime": {
+    "empty": "Start the test to see live throughput",
+    "download": "Download",
+    "upload": "Upload",
+    "mbpsAxis": "Mbps"
+  },
+  "charts": {
+    "noSamples": "No samples",
+    "sample": "Sample"
+  },
+  "theme": {
+    "light": "Light theme",
+    "dark": "Dark theme",
+    "system": "System theme"
+  }
+}

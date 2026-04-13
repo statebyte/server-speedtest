@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import type { LatencyPoint, SpeedTestResults } from "@/types";
 import { LatencyScatterChart } from "@/components/speed-test/latency-scatter-chart";
 
@@ -8,23 +9,25 @@ interface LatencyMeasurementsProps {
 }
 
 export function LatencyMeasurements({ results }: LatencyMeasurementsProps) {
+  const { t } = useTranslation();
+
   const blocks: { key: string; title: string; points: readonly LatencyPoint[]; color: string }[] =
     [
       {
         key: "unloaded",
-        title: "Unloaded latency",
+        title: t("latencyMeasurements.unloaded"),
         points: results.unloadedLatencyPoints,
         color: "var(--chart-2)",
       },
       {
         key: "down",
-        title: "Latency during download",
+        title: t("latencyMeasurements.duringDownload"),
         points: results.downLoadedLatencyPoints,
         color: "var(--speed-download)",
       },
       {
         key: "up",
-        title: "Latency during upload",
+        title: t("latencyMeasurements.duringUpload"),
         points: results.upLoadedLatencyPoints,
         color: "var(--speed-upload)",
       },
@@ -32,7 +35,7 @@ export function LatencyMeasurements({ results }: LatencyMeasurementsProps) {
 
   return (
     <section className="space-y-4">
-      <h2 className="text-sm font-semibold tracking-tight">Latency Measurements</h2>
+      <h2 className="text-sm font-semibold tracking-tight">{t("latencyMeasurements.title")}</h2>
       <div className="space-y-6">
         {blocks.map((b) => (
           <div key={b.key} className="space-y-2">
