@@ -48,7 +48,11 @@
     "serverMarker": "Server",
     "midpointHint": "Midpoint (great-circle path is curved; map shows straight segment)",
     "mapFallback": "Server",
-    "mapUnavailable": "Map unavailable: could not resolve server coordinates from its public IP (server-side geolocation failed). Check outbound HTTPS; set SERVER_PUBLIC_IP if needed, or deploy behind a proxy that forwards client geo headers."
+    "mapUnavailable": "Map unavailable: could not resolve server coordinates from its public IP (server-side geolocation failed). Check outbound HTTPS; set SERVER_PUBLIC_IP if needed, or deploy behind a proxy that forwards client geo headers.",
+    "mapAria": "Interactive map: drag to pan, scroll to zoom, pinch to zoom on touch devices",
+    "mapZoomIn": "Zoom in",
+    "mapZoomOut": "Zoom out",
+    "mapResetFit": "Reset view to fit route"
   },
   "controls": {
     "pause": "Pause",

@@ -65,6 +65,11 @@ export function ServerLocation() {
     };
   }, [data]);
 
+  const mapRemountKey = useMemo(() => {
+    if (!server) return "map-off";
+    return `${server.lat.toFixed(5)},${server.lon.toFixed(5)},${client ? `${client.lat.toFixed(5)},${client.lon.toFixed(5)}` : ""}`;
+  }, [client, server]);
+
   const errorMsg = error
     ? error.startsWith("SERVER_INFO:")
       ? t("errors.serverInfo", { status: error.slice("SERVER_INFO:".length) })
@@ -86,6 +91,7 @@ export function ServerLocation() {
         ) : null}
         {data && server != null ? (
           <ServerMapInner
+            key={mapRemountKey}
             server={server}
             client={client}
             youLabel={t("serverLocation.you")}

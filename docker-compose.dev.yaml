@@ -1,6 +1,6 @@
 services:
   speedtest:
-    image: ghcr.io/statebyte/server-speedtest:latest
+    build: .
     # build: .  # uncomment to build the image locally instead of pulling from GHCR
     env_file:
       - path: .env

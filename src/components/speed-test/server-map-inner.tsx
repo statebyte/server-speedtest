@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { LocateFixed, Minus, Plus } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useTranslation } from "react-i18next";
 
 export interface ServerMapEndpoint {
   readonly lat: number;
@@ -18,6 +27,8 @@ interface ServerMapInnerProps {
 }
 
 const TILE = 256;
+const Z_MIN = 1;
+const Z_MAX = 18;
 
 function project(lat: number, lon: number, z: number): { x: number; y: number } {
   const scale = TILE * 2 ** z;
@@ -25,6 +36,15 @@ function project(lat: number, lon: number, z: number): { x: number; y: number } 
   const sinLat = Math.sin((lat * Math.PI) / 180);
   const y = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale;
   return { x, y };
+}
+
+/** Inverse of `project` at integer zoom level `z` (Web Mercator world pixels). */
+function unproject(worldX: number, worldY: number, z: number): { lat: number; lon: number } {
+  const scale = TILE * 2 ** z;
+  const lon = (worldX / scale) * 360 - 180;
+  const n = Math.PI - (2 * Math.PI * worldY) / scale;
+  const lat = (180 / Math.PI) * Math.atan(Math.sinh(n));
+  return { lat, lon };
 }
 
 function pickView(
@@ -55,7 +75,7 @@ function pickView(
   let centerY = 0;
   let found = false;
 
-  for (let z = 18; z >= 0; z--) {
+  for (let z = Z_MAX; z >= 0; z--) {
     const xs: number[] = [];
     const ys: number[] = [];
     for (const p of points) {
@@ -90,7 +110,37 @@ function tileUrl(z: number, x: number, y: number): string {
   return `https://${s}.tile.openstreetmap.org/${z}/${x}/${y}.png`;
 }
 
+function clampZ(z: number): number {
+  return Math.min(Z_MAX, Math.max(Z_MIN, Math.round(z)));
+}
+
+/** Keep the geographic point under screen (sx, sy) fixed after changing zoom from z to z2. */
+function zoomAtScreenPoint(
+  centerX: number,
+  centerY: number,
+  z: number,
+  z2: number,
+  sx: number,
+  sy: number,
+  w: number,
+  h: number,
+): { centerX: number; centerY: number } {
+  const originX = centerX - w / 2;
+  const originY = centerY - h / 2;
+  const { lat, lon } = unproject(originX + sx, originY + sy, z);
+  const p2 = project(lat, lon, z2);
+  const newOriginX = p2.x - sx;
+  const newOriginY = p2.y - sy;
+  return { centerX: newOriginX + w / 2, centerY: newOriginY + h / 2 };
+}
+
 type ActiveMarker = "client" | "server" | null;
+
+interface MapViewState {
+  readonly centerX: number;
+  readonly centerY: number;
+  readonly z: number;
+}
 
 export function ServerMapInner({
   server,
@@ -99,8 +149,32 @@ export function ServerMapInner({
   serverLabel,
   midpointTitle,
 }: ServerMapInnerProps) {
+  const { t } = useTranslation();
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState({ w: 320, h: 220 });
+
+  const viewRef = useRef<MapViewState>({ centerX: 0, centerY: 0, z: 0 });
+  const pointersRef = useRef(
+    new Map<number, { readonly clientX: number; readonly clientY: number }>(),
+  );
+  const dragRef = useRef<{
+    readonly pointerId: number;
+    lastX: number;
+    lastY: number;
+    moved: boolean;
+  } | null>(null);
+  const pinchRef = useRef<{
+    readonly idA: number;
+    readonly idB: number;
+    readonly startDist: number;
+    readonly startZ: number;
+    readonly startCenterX: number;
+    readonly startCenterY: number;
+    readonly midX: number;
+    readonly midY: number;
+  } | null>(null);
+
+  const wheelAccumRef = useRef(0);
 
   useLayoutEffect(() => {
     const el = wrapRef.current;
@@ -130,28 +204,45 @@ export function ServerMapInner({
     return list;
   }, [client, clientOk, server.lat, server.lon]);
 
-  const view = useMemo(
+  const autoView = useMemo(
     () => pickView(points, size.w, size.h, 36),
     [points, size.w, size.h],
   );
 
-  const { z, centerX, centerY } = view;
+  /** When null, the map follows `autoView` (fit to markers + container size). */
+  const [userOverride, setUserOverride] = useState<MapViewState | null>(null);
+  const view = userOverride ?? autoView;
+  const { centerX, centerY, z } = view;
+
+  const [isDragging, setIsDragging] = useState(false);
+  const [isPinching, setIsPinching] = useState(false);
+  const [disableTileTransition, setDisableTileTransition] = useState(false);
+
+  useLayoutEffect(() => {
+    viewRef.current = view;
+  }, [view]);
   const originX = centerX - size.w / 2;
   const originY = centerY - size.h / 2;
 
-  const toScreen = (lat: number, lon: number) => {
-    const p = project(lat, lon, z);
-    return { x: p.x - originX, y: p.y - originY };
-  };
+  const toScreen = useCallback(
+    (lat: number, lon: number) => {
+      const p = project(lat, lon, z);
+      return { x: p.x - originX, y: p.y - originY };
+    },
+    [originX, originY, z],
+  );
 
   const serverScr = toScreen(server.lat, server.lon);
   const clientScr =
     clientOk && client ? toScreen(client.lat, client.lon) : null;
 
-  const linePositions =
-    clientScr && client && !(client.lat === server.lat && client.lon === server.lon)
-      ? { x1: clientScr.x, y1: clientScr.y, x2: serverScr.x, y2: serverScr.y }
-      : null;
+  const linePositions = useMemo(() => {
+    if (!clientOk || !client) return null;
+    if (client.lat === server.lat && client.lon === server.lon) return null;
+    const s = toScreen(server.lat, server.lon);
+    const c = toScreen(client.lat, client.lon);
+    return { x1: c.x, y1: c.y, x2: s.x, y2: s.y };
+  }, [client, clientOk, server.lat, server.lon, toScreen]);
 
   const midpointScr = useMemo(() => {
     if (!linePositions) return null;
@@ -178,25 +269,240 @@ export function ServerMapInner({
           z,
           x: xm,
           y: ty,
-          left: tx * TILE - originX,
-          top: ty * TILE - originY,
+          left: tx * TILE,
+          top: ty * TILE,
         });
       }
     }
     return list;
   }, [originX, originY, size.w, size.h, z]);
 
-  const [active, setActive] = useState<ActiveMarker>(null);
+  const applyZoom = useCallback(
+    (nextZ: number, anchorSx: number, anchorSy: number) => {
+      const z2 = clampZ(nextZ);
+      setDisableTileTransition(true);
+      setUserOverride((prev) => {
+        const base = prev ?? autoView;
+        if (base.z === z2) return prev;
+        const next = zoomAtScreenPoint(
+          base.centerX,
+          base.centerY,
+          base.z,
+          z2,
+          anchorSx,
+          anchorSy,
+          size.w,
+          size.h,
+        );
+        return { centerX: next.centerX, centerY: next.centerY, z: z2 };
+      });
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setDisableTileTransition(false));
+      });
+    },
+    [autoView, size.h, size.w],
+  );
+
   useEffect(() => {
-    setActive(null);
-  }, [server.lat, server.lon, client?.lat, client?.lon]);
+    const el = wrapRef.current;
+    if (!el) return;
+    const onWheelNative = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      wheelAccumRef.current += e.deltaY;
+      const step = 80;
+      const v = viewRef.current;
+      if (wheelAccumRef.current > step) {
+        wheelAccumRef.current = 0;
+        applyZoom(v.z - 1, sx, sy);
+      } else if (wheelAccumRef.current < -step) {
+        wheelAccumRef.current = 0;
+        applyZoom(v.z + 1, sx, sy);
+      }
+    };
+    el.addEventListener("wheel", onWheelNative, { passive: false });
+    return () => el.removeEventListener("wheel", onWheelNative);
+  }, [applyZoom]);
+
+  const beginPinchFromPointers = useCallback(
+    (el: HTMLDivElement) => {
+      const ids = [...pointersRef.current.keys()];
+      if (ids.length !== 2) return;
+      const idA = ids[0]!;
+      const idB = ids[1]!;
+      const t0 = pointersRef.current.get(idA);
+      const t1 = pointersRef.current.get(idB);
+      if (!t0 || !t1) return;
+      const rect = el.getBoundingClientRect();
+      const dist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+      const v = viewRef.current;
+      pinchRef.current = {
+        idA,
+        idB,
+        startDist: Math.max(8, dist),
+        startZ: v.z,
+        startCenterX: v.centerX,
+        startCenterY: v.centerY,
+        midX: (t0.clientX + t1.clientX) / 2 - rect.left,
+        midY: (t0.clientY + t1.clientY) / 2 - rect.top,
+      };
+      dragRef.current = null;
+      setIsDragging(false);
+      setIsPinching(true);
+      setDisableTileTransition(true);
+    },
+    [],
+  );
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      const el = e.currentTarget;
+      el.setPointerCapture(e.pointerId);
+      pointersRef.current.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY });
+      if (pointersRef.current.size === 2) {
+        beginPinchFromPointers(el);
+        return;
+      }
+      dragRef.current = {
+        pointerId: e.pointerId,
+        lastX: e.clientX,
+        lastY: e.clientY,
+        moved: false,
+      };
+      setIsDragging(true);
+      setDisableTileTransition(true);
+    },
+    [beginPinchFromPointers],
+  );
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!pointersRef.current.has(e.pointerId)) return;
+      pointersRef.current.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY });
+
+      const pinch = pinchRef.current;
+      if (pinch) {
+        const t0 = pointersRef.current.get(pinch.idA);
+        const t1 = pointersRef.current.get(pinch.idB);
+        if (!t0 || !t1) return;
+        const dist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+        const ratio = dist / pinch.startDist;
+        const zFloat = pinch.startZ + Math.log2(Math.max(0.25, Math.min(4, ratio)));
+        const z2 = clampZ(zFloat);
+        const next = zoomAtScreenPoint(
+          pinch.startCenterX,
+          pinch.startCenterY,
+          pinch.startZ,
+          z2,
+          pinch.midX,
+          pinch.midY,
+          size.w,
+          size.h,
+        );
+        setUserOverride({ centerX: next.centerX, centerY: next.centerY, z: z2 });
+        return;
+      }
+
+      const d = dragRef.current;
+      if (!d || d.pointerId !== e.pointerId) return;
+      const dx = e.clientX - d.lastX;
+      const dy = e.clientY - d.lastY;
+      d.lastX = e.clientX;
+      d.lastY = e.clientY;
+      if (Math.abs(dx) + Math.abs(dy) > 2) d.moved = true;
+      setUserOverride((prev) => {
+        const base = prev ?? autoView;
+        return {
+          centerX: base.centerX - dx,
+          centerY: base.centerY - dy,
+          z: base.z,
+        };
+      });
+    },
+    [autoView, size.h, size.w],
+  );
+
+  const onPointerUpOrCancel = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const hadPinch = pinchRef.current != null;
+    pointersRef.current.delete(e.pointerId);
+    try {
+      (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+
+    if (pinchRef.current) {
+      const { idA, idB } = pinchRef.current;
+      if (!pointersRef.current.has(idA) || !pointersRef.current.has(idB)) {
+        pinchRef.current = null;
+        setIsPinching(false);
+      }
+    }
+
+    const d = dragRef.current;
+    if (d?.pointerId === e.pointerId) {
+      dragRef.current = null;
+      setIsDragging(false);
+    }
+
+    if (hadPinch && pinchRef.current == null && pointersRef.current.size === 1) {
+      const pid = [...pointersRef.current.keys()][0]!;
+      const pos = pointersRef.current.get(pid)!;
+      dragRef.current = {
+        pointerId: pid,
+        lastX: pos.clientX,
+        lastY: pos.clientY,
+        moved: false,
+      };
+      setIsDragging(true);
+      setDisableTileTransition(true);
+    }
+
+    if (pointersRef.current.size === 0) {
+      requestAnimationFrame(() => setDisableTileTransition(false));
+    }
+  }, []);
+
+  const zoomIn = useCallback(() => {
+    applyZoom(z + 1, size.w / 2, size.h / 2);
+  }, [applyZoom, size.h, size.w, z]);
+
+  const zoomOut = useCallback(() => {
+    applyZoom(z - 1, size.w / 2, size.h / 2);
+  }, [applyZoom, size.h, size.w, z]);
+
+  const resetFit = useCallback(() => {
+    setDisableTileTransition(false);
+    setUserOverride(null);
+  }, []);
+
+  const [active, setActive] = useState<ActiveMarker>(null);
+
+  const mapAria = t("serverLocation.mapAria");
 
   return (
     <div
       ref={wrapRef}
-      className="server-map-zoom-in server-map-root relative z-0 h-[220px] w-full overflow-hidden rounded-lg bg-muted"
+      role="region"
+      aria-label={mapAria}
+      className="server-map-zoom-in server-map-root server-map-interactive relative z-0 h-[220px] w-full overflow-hidden rounded-lg bg-muted"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUpOrCancel}
+      onPointerCancel={onPointerUpOrCancel}
     >
-      <div className="pointer-events-none absolute inset-0" aria-hidden>
+      <div
+        className={`server-map-tile-plane absolute left-0 top-0 ${disableTileTransition || isDragging || isPinching ? "server-map-tile-plane--instant" : ""}`}
+        style={{
+          width: size.w,
+          height: size.h,
+          transform: `translate3d(${-originX}px, ${-originY}px, 0)`,
+        }}
+        aria-hidden
+      >
         {tiles.map((t) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -205,7 +511,7 @@ export function ServerMapInner({
             alt=""
             width={TILE}
             height={TILE}
-            className="absolute max-w-none select-none"
+            className="pointer-events-none absolute max-w-none select-none"
             style={{ left: t.left, top: t.top }}
             draggable={false}
           />
@@ -259,6 +565,7 @@ export function ServerMapInner({
           title={youLabel}
           aria-label={youLabel}
           aria-pressed={active === "client"}
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={() => setActive((a) => (a === "client" ? null : "client"))}
         >
           <div
@@ -279,6 +586,7 @@ export function ServerMapInner({
         title={serverLabel}
         aria-label={serverLabel}
         aria-pressed={active === "server"}
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={() => setActive((a) => (a === "server" ? null : "server"))}
       >
         <div
@@ -287,8 +595,52 @@ export function ServerMapInner({
         />
       </button>
 
+      <div className="server-map-controls pointer-events-none absolute right-1 top-1 z-10 flex flex-col gap-1">
+        <button
+          type="button"
+          className="server-map-control-btn pointer-events-auto"
+          aria-label={t("serverLocation.mapZoomIn")}
+          title={t("serverLocation.mapZoomIn")}
+          disabled={z >= Z_MAX}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            zoomIn();
+          }}
+        >
+          <Plus className="size-4" aria-hidden />
+        </button>
+        <button
+          type="button"
+          className="server-map-control-btn pointer-events-auto"
+          aria-label={t("serverLocation.mapZoomOut")}
+          title={t("serverLocation.mapZoomOut")}
+          disabled={z <= Z_MIN}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            zoomOut();
+          }}
+        >
+          <Minus className="size-4" aria-hidden />
+        </button>
+        <button
+          type="button"
+          className="server-map-control-btn pointer-events-auto"
+          aria-label={t("serverLocation.mapResetFit")}
+          title={t("serverLocation.mapResetFit")}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            resetFit();
+          }}
+        >
+          <LocateFixed className="size-4" aria-hidden />
+        </button>
+      </div>
+
       {active ? (
-        <div className="absolute bottom-1 left-1 right-1 rounded-md border border-border bg-card/95 px-2 py-1.5 text-left text-card-foreground shadow-sm backdrop-blur-sm">
+        <div className="pointer-events-none absolute bottom-1 left-1 right-1 rounded-md border border-border bg-card/95 px-2 py-1.5 text-left text-card-foreground shadow-sm backdrop-blur-sm">
           <div className="text-sm font-medium">
             {active === "client" ? youLabel : serverLabel}
           </div>

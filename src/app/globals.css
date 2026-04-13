@@ -187,3 +187,50 @@
 .server-map-zoom-in.server-map-root {
   animation: server-map-reveal 0.55s ease-out;
 }
+
+/* Interactive map: pan cursor, tile plane motion, zoom controls */
+.server-map-interactive {
+  touch-action: none;
+  cursor: grab;
+}
+
+.server-map-interactive:active {
+  cursor: grabbing;
+}
+
+.server-map-tile-plane {
+  will-change: transform;
+  transition: transform 0.22s ease-out;
+}
+
+.server-map-tile-plane--instant {
+  transition: none;
+}
+
+.server-map-control-btn {
+  display: flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: color-mix(in oklch, var(--card) 92%, transparent);
+  color: var(--card-foreground);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+  backdrop-filter: blur(6px);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.server-map-control-btn:hover:not(:disabled) {
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.server-map-control-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
