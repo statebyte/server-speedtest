@@ -2,14 +2,32 @@ import { hostname } from "node:os";
 import { NextRequest, NextResponse } from "next/server";
 import { APP_BRAND_TITLE, APP_VERSION } from "@/lib/app-identity";
 
+function firstForwardedIp(value: string | null): string | null {
+  if (!value) return null;
+  const ip = value.split(",")[0]?.trim();
+  return ip || null;
+}
+
 function getClientIp(request: NextRequest): string | null {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) {
-    return forwarded.split(",")[0]?.trim() ?? null;
+  const chain = [
+    request.headers.get("cf-connecting-ip"),
+    request.headers.get("true-client-ip"),
+    request.headers.get("x-real-ip"),
+    firstForwardedIp(request.headers.get("x-forwarded-for")),
+    firstForwardedIp(request.headers.get("x-vercel-forwarded-for")),
+  ];
+  for (const raw of chain) {
+    const ip = raw?.trim();
+    if (ip) return ip;
   }
-  const realIp = request.headers.get("x-real-ip");
-  if (realIp) {
-    return realIp.trim();
+  return null;
+}
+
+function readCoord(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const n = Number(value.trim());
+    return Number.isFinite(n) ? n : null;
   }
   return null;
 }
@@ -51,8 +69,8 @@ async function geoForIp(
     return {
       city: data.city ?? null,
       country: data.country ?? null,
-      lat: typeof data.latitude === "number" ? data.latitude : null,
-      lon: typeof data.longitude === "number" ? data.longitude : null,
+      lat: readCoord(data.latitude),
+      lon: readCoord(data.longitude),
     };
   } catch {
     return { city: null, country: null, lat: null, lon: null };

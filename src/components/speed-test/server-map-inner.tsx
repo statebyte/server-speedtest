@@ -117,7 +117,9 @@ export function ServerMapInner({
         <Polyline
           positions={linePositions}
           pathOptions={{
-            color: "hsl(var(--foreground) / 0.45)",
+            /* --foreground is oklch(...); do not wrap in hsl() or the stroke is invalid in SVG. */
+            color: "var(--foreground)",
+            opacity: 0.5,
             weight: 2,
             dashArray: "6 8",
           }}

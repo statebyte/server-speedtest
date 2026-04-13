@@ -1,8 +1,12 @@
 services:
   speedtest:
     build: .
+    env_file:
+      - path: .env
+        required: false
     ports:
-      - "3000:3000"
+      # Host port from `.env` (Compose substitutes `HOST_PORT` from project `.env` automatically).
+      - "${HOST_PORT:-3000}:3000"
       # WebRTC ICE uses UDP; map the same range as WRTC_ICE_UDP_* on the server.
       - "10000-10099:10000-10099/udp"
     environment:
