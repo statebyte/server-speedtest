@@ -134,7 +134,7 @@
   }
 }
 
-/* Leaflet route map: markers + entry zoom-in */
+/* Server route map: markers + entry zoom-in */
 .geo-marker-wrap {
   background: none;
   border: none;
@@ -184,6 +184,6 @@
   }
 }
 
-.server-map-zoom-in .leaflet-container {
+.server-map-zoom-in.server-map-root {
   animation: server-map-reveal 0.55s ease-out;
 }

@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A web app for measuring network performance **against the server that hosts it**: download, upload, latency, jitter, packet loss, and a channel quality score. Built with **Next.js** (App Router), **WebRTC** (`@roamhq/wrtc`) for load-style measurements, **HTTP** for ping/jitter, **React** + **Tailwind CSS** for the UI, and **Leaflet** for the map. **English** and **Russian** locales.
+A web app for measuring network performance **against the server that hosts it**: download, upload, latency, jitter, packet loss, and a channel quality score. Built with **Next.js** (App Router), **WebRTC** (`@roamhq/wrtc`) for load-style measurements, **HTTP** for ping/jitter, **React** + **Tailwind CSS** for the UI, and **OpenStreetMap** raster tiles for the location map. **English** and **Russian** locales.
 
 ## Screenshot
 
