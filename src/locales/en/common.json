@@ -22,6 +22,13 @@
     "idleHint": "Press Start to run download, upload, latency, jitter, and packet loss checks against this deployment.",
     "start": "Start"
   },
+  "phases": {
+    "latency": "Latency {{current}}/{{total}}",
+    "download": "Download {{size}} ({{current}}/{{total}})",
+    "upload": "Upload {{size}} ({{current}}/{{total}})",
+    "packetLoss": "Packet loss {{sent}}/{{total}} · {{received}} received",
+    "done": "Done"
+  },
   "serverLocation": {
     "title": "Server location",
     "connectedVia": "Connected via",
@@ -32,7 +39,8 @@
     "you": "You",
     "serverMarker": "Server",
     "midpointHint": "Midpoint (great-circle path is curved; map shows straight segment)",
-    "mapFallback": "Server"
+    "mapFallback": "Server",
+    "mapUnavailable": "Map unavailable: server coordinates are unknown. Set SERVER_PUBLIC_IP or deploy behind a proxy that forwards client geo headers."
   },
   "controls": {
     "pause": "Pause",
@@ -94,6 +102,8 @@
   },
   "packetLoss": {
     "title": "Packet loss measurements",
+    "liveLegend": "Live grid: gray = not sent, amber = in flight (no echo yet), green = echoed, red = lost after the wait window.",
+    "liveProgress": "Sent {{sent}}/{{total}} · Received {{received}} · Lost {{lost}}",
     "explainer": "Packet loss uses 1000 unreliable WebRTC data channel messages (UDP under ICE) echoed by this server.",
     "received": "Received",
     "lost": "Lost",

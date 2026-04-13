@@ -49,15 +49,17 @@ function FlyToRoute({
   const map = useMap();
 
   useEffect(() => {
+    const clientLat = client?.lat;
+    const clientLon = client?.lon;
     const hasClient =
       client != null &&
-      Number.isFinite(client.lat) &&
-      Number.isFinite(client.lon) &&
-      !(client.lat === server.lat && client.lon === server.lon);
+      Number.isFinite(clientLat) &&
+      Number.isFinite(clientLon) &&
+      !(clientLat === server.lat && clientLon === server.lon);
 
     if (hasClient) {
       const b = L.latLngBounds(
-        [client!.lat, client!.lon],
+        [clientLat!, clientLon!],
         [server.lat, server.lon],
       );
       if (b.isValid()) {
@@ -67,7 +69,7 @@ function FlyToRoute({
     }
 
     map.flyTo([server.lat, server.lon], 4, { duration: 1.1 });
-  }, [map, server.lat, server.lon, client]);
+  }, [map, server.lat, server.lon, client?.lat, client?.lon]);
 
   return null;
 }

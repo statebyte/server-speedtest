@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSpeedTest } from "@/hooks/use-speed-test";
+import { LivePhaseBadge } from "@/components/speed-test/live-phase-badge";
 import { ControlButtons } from "@/components/speed-test/control-buttons";
 import { DownloadMeasurements } from "@/components/speed-test/download-measurements";
 import { LatencyMeasurements } from "@/components/speed-test/latency-measurements";
@@ -38,7 +39,10 @@ export function SpeedTest() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">{t("liveResults.title")}</CardTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="text-base">{t("liveResults.title")}</CardTitle>
+              {started ? <LivePhaseBadge phase={results.currentPhase} /> : null}
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {!started ? (
@@ -88,7 +92,10 @@ export function SpeedTest() {
             <Card className="lg:col-span-1">
               <CardContent className="space-y-8 pt-6">
                 <LatencyMeasurements results={results} />
-                <PacketLossMeasurements packetLoss={results.packetLoss} />
+                <PacketLossMeasurements
+                  packetLoss={results.packetLoss}
+                  packetLossProgress={results.packetLossProgress}
+                />
               </CardContent>
             </Card>
           </div>

@@ -1,8 +1,9 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import type { PacketLossResult } from "@/types";
+import type { PacketLossProgress, PacketLossResult } from "@/types";
 import { formatPercent } from "@/lib/formatters";
+import { PacketLossGrid } from "@/components/speed-test/packet-loss-grid";
 import {
   Table,
   TableBody,
@@ -14,9 +15,13 @@ import {
 
 interface PacketLossMeasurementsProps {
   readonly packetLoss: PacketLossResult | null;
+  readonly packetLossProgress: PacketLossProgress | null;
 }
 
-export function PacketLossMeasurements({ packetLoss }: PacketLossMeasurementsProps) {
+export function PacketLossMeasurements({
+  packetLoss,
+  packetLossProgress,
+}: PacketLossMeasurementsProps) {
   const { t } = useTranslation();
   const receivedPct = packetLoss
     ? (packetLoss.received / Math.max(1, packetLoss.sent)) * 100
@@ -32,9 +37,24 @@ export function PacketLossMeasurements({ packetLoss }: PacketLossMeasurementsPro
   return (
     <section className="space-y-4">
       <h2 className="text-sm font-semibold tracking-tight">{t("packetLoss.title")}</h2>
-      {!packetLoss ? (
+      {packetLossProgress ? (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">{t("packetLoss.liveLegend")}</p>
+          <p className="font-mono text-xs text-muted-foreground">
+            {t("packetLoss.liveProgress", {
+              sent: packetLossProgress.sent,
+              total: packetLossProgress.total,
+              received: packetLossProgress.received,
+              lost: packetLossProgress.lost,
+            })}
+          </p>
+          <PacketLossGrid progress={packetLossProgress} />
+        </div>
+      ) : null}
+      {!packetLoss && !packetLossProgress ? (
         <p className="text-sm text-muted-foreground">{t("packetLoss.explainer")}</p>
-      ) : (
+      ) : null}
+      {packetLoss ? (
         <div className="space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -95,7 +115,7 @@ export function PacketLossMeasurements({ packetLoss }: PacketLossMeasurementsPro
             )}
           </div>
         </div>
-      )}
+      ) : null}
     </section>
   );
 }

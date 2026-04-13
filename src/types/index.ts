@@ -22,6 +22,42 @@ export interface PacketLossResult {
   readonly missingIndices: readonly number[];
 }
 
+/** Per-packet WebRTC echo status for live packet-loss visualization. */
+export type PacketStatus = "pending" | "sent" | "received" | "lost";
+
+export interface PacketLossProgress {
+  readonly total: number;
+  readonly sent: number;
+  readonly received: number;
+  readonly lost: number;
+  readonly phase: "sending" | "waiting" | "done";
+  readonly packets: readonly PacketStatus[];
+}
+
+/** High-level phase of the speed test (for UI next to Live results). */
+export type SpeedTestPhase =
+  | { readonly type: "idle" }
+  | { readonly type: "latency"; readonly current: number; readonly total: number }
+  | {
+      readonly type: "download";
+      readonly bytes: number;
+      readonly current: number;
+      readonly total: number;
+    }
+  | {
+      readonly type: "upload";
+      readonly bytes: number;
+      readonly current: number;
+      readonly total: number;
+    }
+  | {
+      readonly type: "packetLoss";
+      readonly sent: number;
+      readonly total: number;
+      readonly received: number;
+    }
+  | { readonly type: "done" };
+
 export interface NetworkQualityScores {
   readonly videoStreaming: QualityLabel;
   readonly onlineGaming: QualityLabel;
@@ -38,6 +74,9 @@ export interface SpeedTestResults {
   readonly upLoadedLatencyMs: number | null;
   readonly upLoadedJitterMs: number | null;
   readonly packetLoss: PacketLossResult | null;
+  /** Live packet-loss grid; null when not running that step. */
+  readonly packetLossProgress: PacketLossProgress | null;
+  readonly currentPhase: SpeedTestPhase;
   readonly downloadPoints: readonly BandwidthPoint[];
   readonly uploadPoints: readonly BandwidthPoint[];
   readonly unloadedLatencyPoints: readonly LatencyPoint[];

@@ -1,27 +1,18 @@
+import { DEFAULT_MEASUREMENT_STEPS } from "@/config/speed-test-measurement";
 import { computeNetworkQuality } from "@/lib/network-quality";
 import { randomUUID } from "@/lib/random-uuid";
 import type {
   BandwidthPoint,
   LatencyPoint,
   MeasurementStep,
+  PacketLossProgress,
   PacketLossResult,
+  PacketStatus,
+  SpeedTestPhase,
   SpeedTestResults,
 } from "@/types";
 
-export const DEFAULT_MEASUREMENT_STEPS: readonly MeasurementStep[] = [
-  { type: "latency", count: 1 },
-  { type: "download", bytes: 100_000, count: 1 },
-  { type: "latency", count: 20 },
-  { type: "download", bytes: 100_000, count: 9 },
-  { type: "download", bytes: 1_000_000, count: 8 },
-  { type: "upload", bytes: 100_000, count: 8 },
-  { type: "upload", bytes: 1_000_000, count: 6 },
-  { type: "download", bytes: 10_000_000, count: 6 },
-  { type: "upload", bytes: 10_000_000, count: 4 },
-  { type: "download", bytes: 25_000_000, count: 4 },
-  { type: "upload", bytes: 25_000_000, count: 4 },
-  { type: "packetLoss", count: 1000, timeoutMs: 6000 },
-] as const;
+export { DEFAULT_MEASUREMENT_STEPS };
 
 function parseServerTimingDurMs(headers: Headers): number {
   const st = headers.get("server-timing");
@@ -101,6 +92,13 @@ export class SpeedTestEngine {
     uploadMbps: number | null;
   }[] = [];
   private lastPacketLoss: PacketLossResult | null = null;
+  private packetLossProgress: PacketLossProgress | null = null;
+  /** Mutable packet row during WebRTC loss test; snapshotted into `packetLossProgress`. */
+  private plLivePackets: PacketStatus[] | null = null;
+  private plPhase: PacketLossProgress["phase"] = "sending";
+  /** Browser timer id (`window.setTimeout`); typed as number for DOM + Node typings overlap. */
+  private plThrottleTimer: number | null = null;
+  private currentPhase: SpeedTestPhase = { type: "idle" };
 
   onRunningChange?: (running: boolean) => void;
   onResultsChange?: () => void;
@@ -154,6 +152,8 @@ export class SpeedTestEngine {
       upLoadedLatencyMs,
       upLoadedJitterMs,
       packetLoss: this.lastPacketLoss,
+      packetLossProgress: this.packetLossProgress,
+      currentPhase: this.currentPhase,
       downloadPoints: this.downloadPoints,
       uploadPoints: this.uploadPoints,
       unloadedLatencyPoints: this.unloadedLatencyPoints,
@@ -166,6 +166,59 @@ export class SpeedTestEngine {
 
   private emitChange(): void {
     this.onResultsChange?.();
+  }
+
+  private setPhase(phase: SpeedTestPhase): void {
+    this.currentPhase = phase;
+    this.emitChange();
+  }
+
+  private clearPacketLossThrottle(): void {
+    if (this.plThrottleTimer != null) {
+      window.clearTimeout(this.plThrottleTimer);
+      this.plThrottleTimer = null;
+    }
+  }
+
+  private schedulePacketLossUiFlush(): void {
+    if (this.plThrottleTimer != null) return;
+    this.plThrottleTimer = window.setTimeout(() => {
+      this.plThrottleTimer = null;
+      this.flushPacketLossProgressSnapshot();
+    }, 50) as unknown as number;
+  }
+
+  /** Pushes live WebRTC packet states to `packetLossProgress` and updates the packet-loss phase badge. */
+  private flushPacketLossProgressSnapshot(): void {
+    const packets = this.plLivePackets;
+    if (packets == null) return;
+
+    let sentOut = 0;
+    let receivedCount = 0;
+    let lostCount = 0;
+    for (const p of packets) {
+      if (p === "pending") continue;
+      sentOut++;
+      if (p === "received") receivedCount++;
+      else if (p === "lost") lostCount++;
+    }
+
+    this.packetLossProgress = {
+      total: packets.length,
+      sent: sentOut,
+      received: receivedCount,
+      lost: lostCount,
+      phase: this.plPhase,
+      packets: [...packets],
+    };
+
+    this.currentPhase = {
+      type: "packetLoss",
+      sent: sentOut,
+      total: packets.length,
+      received: receivedCount,
+    };
+    this.emitChange();
   }
 
   private pushRealtime(downloadBps: number | null, uploadBps: number | null): void {
@@ -326,6 +379,12 @@ export class SpeedTestEngine {
     await this.waitIfPaused();
     if (this.abort) return;
 
+    this.clearPacketLossThrottle();
+    this.plLivePackets = Array.from({ length: count }, (): PacketStatus => "pending");
+    this.plPhase = "sending";
+    this.flushPacketLossProgressSnapshot();
+
+    const packets = this.plLivePackets;
     const sessionId = randomUUID();
     const iceServers: RTCIceServer[] = [
       { urls: "stun:stun.l.google.com:19302" },
@@ -334,7 +393,6 @@ export class SpeedTestEngine {
 
     const pc = new RTCPeerConnection({ iceServers });
     let dc: RTCDataChannel;
-    const receivedSeq = new Set<number>();
 
     try {
       try {
@@ -349,10 +407,13 @@ export class SpeedTestEngine {
       dc.binaryType = "arraybuffer";
       dc.onmessage = (ev: MessageEvent<ArrayBuffer>) => {
         try {
+          const row = this.plLivePackets;
+          if (row == null) return;
           const seq = new DataView(ev.data).getUint32(0, false);
-          if (seq >= 0 && seq < count) {
-            receivedSeq.add(seq);
-          }
+          if (seq < 0 || seq >= row.length) return;
+          if (row[seq] !== "sent") return;
+          row[seq] = "received";
+          this.schedulePacketLossUiFlush();
         } catch {
           /* ignore */
         }
@@ -403,12 +464,52 @@ export class SpeedTestEngine {
         const buf = new ArrayBuffer(packetSize);
         new DataView(buf).setUint32(0, i, false);
         crypto.getRandomValues(new Uint8Array(buf, 4, packetSize - 4));
+        packets[i] = "sent";
         dc.send(buf);
+        this.schedulePacketLossUiFlush();
       }
+
+      this.plPhase = "waiting";
+      this.clearPacketLossThrottle();
+      this.flushPacketLossProgressSnapshot();
 
       await new Promise<void>((resolve) => {
         window.setTimeout(resolve, echoWaitMs);
       });
+
+      for (let i = 0; i < count; i++) {
+        if (packets[i] !== "received") {
+          packets[i] = "lost";
+        }
+      }
+      this.plPhase = "done";
+      this.clearPacketLossThrottle();
+      this.flushPacketLossProgressSnapshot();
+
+      const missing: number[] = [];
+      for (let i = 0; i < count; i++) {
+        if (packets[i] !== "received") {
+          missing.push(i);
+        }
+      }
+
+      const received = count - missing.length;
+      const lost = missing.length;
+      const ratio = count > 0 ? lost / count : 0;
+
+      this.lastPacketLoss = {
+        sent: count,
+        received,
+        lost,
+        ratio,
+        missingIndices: missing,
+      };
+      this.emitChange();
+    } catch (e) {
+      this.clearPacketLossThrottle();
+      this.packetLossProgress = null;
+      this.plLivePackets = null;
+      throw e;
     } finally {
       void fetch("/api/webrtc/close", {
         method: "POST",
@@ -422,26 +523,6 @@ export class SpeedTestEngine {
         /* ignore */
       }
     }
-
-    const missing: number[] = [];
-    for (let i = 0; i < count; i++) {
-      if (!receivedSeq.has(i)) {
-        missing.push(i);
-      }
-    }
-
-    const received = count - missing.length;
-    const lost = missing.length;
-    const ratio = count > 0 ? lost / count : 0;
-
-    this.lastPacketLoss = {
-      sent: count,
-      received,
-      lost,
-      ratio,
-      missingIndices: missing,
-    };
-    this.emitChange();
   }
 
   private waitIceGatheringBrowser(pc: RTCPeerConnection): Promise<void> {
@@ -613,6 +694,10 @@ export class SpeedTestEngine {
     this.upLoadedLatencyPoints = [];
     this.realtimeSeries = [];
     this.lastPacketLoss = null;
+    this.packetLossProgress = null;
+    this.plLivePackets = null;
+    this.clearPacketLossThrottle();
+    this.currentPhase = { type: "idle" };
     this.abort = false;
     this.emitChange();
     void this.play();
@@ -624,6 +709,9 @@ export class SpeedTestEngine {
     this.running = true;
     this.paused = false;
     this.abort = false;
+    this.packetLossProgress = null;
+    this.plLivePackets = null;
+    this.clearPacketLossThrottle();
     this.onRunningChange?.(true);
 
     try {
@@ -632,6 +720,7 @@ export class SpeedTestEngine {
         if (step.type === "latency") {
           for (let i = 0; i < step.count; i++) {
             if (this.abort) break;
+            this.setPhase({ type: "latency", current: i + 1, total: step.count });
             await this.waitIfPaused();
             const ms = await this.measurePing();
             this.unloadedLatencyPoints = [
@@ -643,11 +732,23 @@ export class SpeedTestEngine {
         } else if (step.type === "download") {
           for (let i = 0; i < step.count; i++) {
             if (this.abort) break;
+            this.setPhase({
+              type: "download",
+              bytes: step.bytes,
+              current: i + 1,
+              total: step.count,
+            });
             await this.measureDownloadOnce(step.bytes);
           }
         } else if (step.type === "upload") {
           for (let i = 0; i < step.count; i++) {
             if (this.abort) break;
+            this.setPhase({
+              type: "upload",
+              bytes: step.bytes,
+              current: i + 1,
+              total: step.count,
+            });
             await this.measureUploadOnce(step.bytes);
           }
         } else if (step.type === "packetLoss") {
@@ -659,6 +760,7 @@ export class SpeedTestEngine {
         }
       }
 
+      this.setPhase({ type: "done" });
       const results = this.getResults();
       this.onFinish?.(results);
     } catch (e) {
@@ -666,6 +768,7 @@ export class SpeedTestEngine {
         // cancelled by restart — not an error
       } else {
         const message = e instanceof Error ? e.message : "Speed test failed";
+        this.setPhase({ type: "idle" });
         this.onError?.(message);
       }
     } finally {

@@ -17,18 +17,29 @@ export function ServerLocation() {
   const { t } = useTranslation();
   const { data, error } = useServerInfo();
 
-  const server: ServerMapEndpoint = useMemo(() => {
-    const serverLat = data?.serverLat ?? 52.37;
-    const serverLon = data?.serverLon ?? 4.9;
+  const server: ServerMapEndpoint | null = useMemo(() => {
+    if (!data) return null;
+    const serverLat = data.serverLat;
+    const serverLon = data.serverLon;
+    if (
+      serverLat == null ||
+      serverLon == null ||
+      !Number.isFinite(serverLat) ||
+      !Number.isFinite(serverLon) ||
+      Math.abs(serverLat) > 90 ||
+      Math.abs(serverLon) > 180
+    ) {
+      return null;
+    }
     const serverTitle =
-      data?.serverCity && data?.serverCountry
+      data.serverCity && data.serverCountry
         ? `${data.serverCity}, ${data.serverCountry}`
-        : data?.serverHostname ?? t("serverLocation.mapFallback");
+        : data.serverHostname || t("serverLocation.mapFallback");
     return {
       lat: serverLat,
       lon: serverLon,
       title: serverTitle,
-      ip: data?.serverIp ?? null,
+      ip: data.serverIp ?? null,
     };
   }, [data, t]);
 
@@ -66,13 +77,21 @@ export function ServerLocation() {
       </CardHeader>
       <CardContent className="space-y-4">
         {errorMsg ? <p className="text-sm text-destructive">{errorMsg}</p> : null}
-        <ServerMapInner
-          server={server}
-          client={client}
-          youLabel={t("serverLocation.you")}
-          serverLabel={t("serverLocation.serverMarker")}
-          midpointTitle={t("serverLocation.midpointHint")}
-        />
+        {!data && !errorMsg ? (
+          <div className="h-[220px] animate-pulse rounded-lg bg-muted" aria-hidden />
+        ) : null}
+        {data && server == null ? (
+          <p className="text-sm text-muted-foreground">{t("serverLocation.mapUnavailable")}</p>
+        ) : null}
+        {data && server != null ? (
+          <ServerMapInner
+            server={server}
+            client={client}
+            youLabel={t("serverLocation.you")}
+            serverLabel={t("serverLocation.serverMarker")}
+            midpointTitle={t("serverLocation.midpointHint")}
+          />
+        ) : null}
         <dl className="space-y-2 text-sm">
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">{t("serverLocation.connectedVia")}</dt>

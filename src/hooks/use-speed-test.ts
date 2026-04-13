@@ -1,11 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { buildMeasurementSteps } from "@/config/speed-test-measurement";
 import { SpeedTestEngine } from "@/lib/speed-test-engine";
-import type { SpeedTestResults } from "@/types";
+import type { SpeedTestPhase, SpeedTestResults } from "@/types";
 
 export function useSpeedTest(): {
   readonly results: SpeedTestResults;
+  /** Convenience alias for `results.currentPhase` (also included in `results`). */
+  readonly currentPhase: SpeedTestPhase;
   readonly running: boolean;
   readonly paused: boolean;
   readonly started: boolean;
@@ -17,7 +20,7 @@ export function useSpeedTest(): {
 } {
   const engineRef = useRef<SpeedTestEngine | null>(null);
   const [results, setResults] = useState<SpeedTestResults>(() =>
-    new SpeedTestEngine().getResults(),
+    new SpeedTestEngine(buildMeasurementSteps()).getResults(),
   );
   const [running, setRunning] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -25,7 +28,7 @@ export function useSpeedTest(): {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const engine = new SpeedTestEngine();
+    const engine = new SpeedTestEngine(buildMeasurementSteps());
     engine.onRunningChange = (isRunning) => {
       setRunning(isRunning);
       setPaused(engine.isPaused);
@@ -65,5 +68,16 @@ export function useSpeedTest(): {
     engineRef.current?.restart();
   }, []);
 
-  return { results, running, paused, started, error, play, pause, resume, restart };
+  return {
+    results,
+    currentPhase: results.currentPhase,
+    running,
+    paused,
+    started,
+    error,
+    play,
+    pause,
+    resume,
+    restart,
+  };
 }
