@@ -1,5 +1,6 @@
 import { hostname } from "node:os";
 import { NextRequest, NextResponse } from "next/server";
+import { APP_BRAND_TITLE, APP_VERSION } from "@/lib/app-identity";
 
 function getClientIp(request: NextRequest): string | null {
   const forwarded = request.headers.get("x-forwarded-for");
@@ -68,6 +69,8 @@ export async function GET(request: NextRequest) {
   const [geo, clientGeo] = await Promise.all([geoForIp(publicIp), geoForIp(clientIp)]);
 
   return NextResponse.json({
+    appBrand: APP_BRAND_TITLE,
+    appVersion: APP_VERSION,
     serverHostname,
     serverIp: publicIp,
     serverCity: geo.city,

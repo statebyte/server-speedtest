@@ -318,7 +318,11 @@ export class SpeedTestEngine {
    * Packet loss over WebRTC DataChannel (unordered, maxRetransmits: 0 when supported).
    * Media path uses UDP under ICE; browsers cannot send raw UDP from JS.
    */
-  private async runPacketLoss(count: number, echoWaitMs: number): Promise<void> {
+  private async runPacketLoss(
+    count: number,
+    echoWaitMs: number,
+    openTimeoutMs: number,
+  ): Promise<void> {
     await this.waitIfPaused();
     if (this.abort) return;
 
@@ -383,7 +387,10 @@ export class SpeedTestEngine {
       }
 
       await pc.setRemoteDescription(body.answer);
-      await this.waitDataChannelOpen(dc);
+      await this.waitDataChannelOpen(dc, {
+        timeoutMs: openTimeoutMs,
+        signal: this.signal(),
+      });
 
       const packetSize = 64;
       for (let i = 0; i < count; i++) {
@@ -452,22 +459,65 @@ export class SpeedTestEngine {
     });
   }
 
-  private waitDataChannelOpen(dc: RTCDataChannel): Promise<void> {
+  private waitDataChannelOpen(
+    dc: RTCDataChannel,
+    options: { readonly timeoutMs: number; readonly signal?: AbortSignal },
+  ): Promise<void> {
     if (dc.readyState === "open") {
       return Promise.resolve();
     }
+    if (dc.readyState === "closing" || dc.readyState === "closed") {
+      return Promise.reject(new Error("Data channel closed before open"));
+    }
+
+    const { timeoutMs, signal } = options;
+    if (signal?.aborted) {
+      return Promise.reject(new DOMException("Aborted", "AbortError"));
+    }
+
     return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (action: () => void) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(t);
+        signal?.removeEventListener("abort", onAbort);
+        dc.removeEventListener("open", onOpen);
+        dc.removeEventListener("error", onError);
+        dc.removeEventListener("close", onClose);
+        action();
+      };
+
       const t = window.setTimeout(() => {
-        reject(new Error("Data channel open timeout"));
-      }, 20_000);
-      dc.onopen = () => {
-        window.clearTimeout(t);
-        resolve();
+        finish(() => reject(new Error("Data channel open timeout")));
+      }, timeoutMs);
+
+      const onAbort = () => {
+        finish(() => reject(new DOMException("Aborted", "AbortError")));
       };
-      dc.onerror = () => {
-        window.clearTimeout(t);
-        reject(new Error("Data channel error"));
+
+      const onOpen = () => {
+        finish(() => resolve());
       };
+
+      const onError = () => {
+        finish(() => reject(new Error("Data channel error")));
+      };
+
+      const onClose = () => {
+        finish(() => reject(new Error("Data channel closed before open")));
+      };
+
+      signal?.addEventListener("abort", onAbort, { once: true });
+      dc.addEventListener("open", onOpen, { once: true });
+      dc.addEventListener("error", onError, { once: true });
+      dc.addEventListener("close", onClose, { once: true });
+
+      if (dc.readyState === "open") {
+        finish(() => resolve());
+      } else if (dc.readyState === "closing" || dc.readyState === "closed") {
+        finish(() => reject(new Error("Data channel closed before open")));
+      }
     });
   }
 
@@ -533,7 +583,11 @@ export class SpeedTestEngine {
             await this.measureUploadOnce(step.bytes);
           }
         } else if (step.type === "packetLoss") {
-          await this.runPacketLoss(step.count, step.timeoutMs);
+          await this.runPacketLoss(
+            step.count,
+            step.timeoutMs,
+            step.openTimeoutMs ?? 20_000,
+          );
         }
       }
 

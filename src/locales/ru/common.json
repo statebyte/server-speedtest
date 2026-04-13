@@ -5,9 +5,6 @@
     "subtitleEmphasis": "этого сервера",
     "subtitleEnd": "(хоста, на котором запущено приложение)."
   },
-  "header": {
-    "brand": "Тест скорости"
-  },
   "footer": {
     "copyright": "2026 @ statebyte"
   },

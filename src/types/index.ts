@@ -48,6 +48,8 @@ export interface SpeedTestResults {
 }
 
 export interface ServerInfo {
+  readonly appBrand: string;
+  readonly appVersion: string;
   readonly serverHostname: string;
   readonly serverIp: string | null;
   readonly serverCity: string | null;
@@ -66,4 +68,11 @@ export type MeasurementStep =
   | { readonly type: "latency"; readonly count: number }
   | { readonly type: "download"; readonly bytes: number; readonly count: number }
   | { readonly type: "upload"; readonly bytes: number; readonly count: number }
-  | { readonly type: "packetLoss"; readonly count: number; readonly timeoutMs: number };
+  | {
+      readonly type: "packetLoss";
+      readonly count: number;
+      /** Milliseconds to wait for echoes after sending (not DC open). */
+      readonly timeoutMs: number;
+      /** Max wait for the data channel to reach `open` (default 20000). */
+      readonly openTimeoutMs?: number;
+    };

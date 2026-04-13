@@ -4,6 +4,7 @@ import { I18nProvider } from "@/components/providers/i18n-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { SiteFooter } from "@/components/speed-test/site-footer";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { APP_BRAND_TITLE } from "@/lib/app-identity";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Server Speed Test",
+  title: APP_BRAND_TITLE,
   description: "Measure network performance against this server",
 };
 
