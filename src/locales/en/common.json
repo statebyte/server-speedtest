@@ -31,6 +31,8 @@
   },
   "serverLocation": {
     "title": "Server location",
+    "sectionYou": "You (your connection)",
+    "sectionServer": "This speed test server",
     "connectedVia": "Connected via",
     "server": "Server",
     "hostname": "Hostname",

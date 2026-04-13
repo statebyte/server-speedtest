@@ -19,6 +19,8 @@ export interface SpeedTestMeasurementConfig {
   readonly upload10m: number;
   readonly download25m: number;
   readonly upload25m: number;
+  readonly download100m: number;
+  readonly upload50m: number;
   /** WebRTC UDP-style probe count; set `probes` to 0 to skip packet loss. */
   readonly packetLoss: {
     readonly probes: number;
@@ -39,6 +41,8 @@ export const DEFAULT_SPEED_TEST_MEASUREMENT_CONFIG: SpeedTestMeasurementConfig =
   upload10m: 4,
   download25m: 4,
   upload25m: 4,
+  download100m: 3,
+  upload50m: 3,
   packetLoss: {
     probes: 1000,
     echoWaitMs: 6000,
@@ -74,6 +78,8 @@ export function buildMeasurementSteps(
     { type: "upload", bytes: 10_000_000, count: config.upload10m },
     { type: "download", bytes: 25_000_000, count: config.download25m },
     { type: "upload", bytes: 25_000_000, count: config.upload25m },
+    { type: "download", bytes: 100_000_000, count: config.download100m },
+    { type: "upload", bytes: 50_000_000, count: config.upload50m },
   );
 
   return steps;

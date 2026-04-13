@@ -31,6 +31,8 @@
   },
   "serverLocation": {
     "title": "Расположение сервера",
+    "sectionYou": "Вы (ваше подключение)",
+    "sectionServer": "Сервер этого теста скорости",
     "connectedVia": "Подключение",
     "server": "Сервер",
     "hostname": "Имя хоста",
