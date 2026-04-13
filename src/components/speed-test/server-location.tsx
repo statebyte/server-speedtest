@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useServerInfo } from "@/hooks/use-server-info";
 import type { ServerMapEndpoint } from "@/components/speed-test/server-map-inner";
+import { IpRevealCopyRow } from "@/components/speed-test/ip-reveal-copy-row";
 
 const ServerMapInner = dynamic(
   () =>
@@ -112,12 +113,53 @@ export function ServerLocation() {
             </dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">{t("serverLocation.yourIp")}</dt>
-            <dd className="font-mono text-xs font-medium">{data?.clientIp ?? "—"}</dd>
+            <dt className="shrink-0 text-muted-foreground">{t("serverLocation.yourIp")}</dt>
+            <dd className="flex min-w-0 justify-end text-right">
+              <IpRevealCopyRow
+                ip={data?.clientIp ?? null}
+                blur
+                revealLabel={t("serverLocation.revealIp")}
+                hideLabel={t("serverLocation.hideIp")}
+                copyLabel={t("serverLocation.copyIp")}
+                copiedLabel={t("serverLocation.copiedIp")}
+              />
+            </dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">{t("serverLocation.serverIp")}</dt>
-            <dd className="font-mono text-xs font-medium">{data?.serverIp ?? "—"}</dd>
+            <dt className="text-muted-foreground">{t("serverLocation.yourAsn")}</dt>
+            <dd className="max-w-[55%] text-right font-mono text-xs font-medium">
+              {data?.clientAsn ?? "—"}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground">{t("serverLocation.yourOrg")}</dt>
+            <dd className="max-w-[55%] text-right text-xs font-medium">
+              {data?.clientOrg ?? "—"}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="shrink-0 text-muted-foreground">{t("serverLocation.serverIp")}</dt>
+            <dd className="flex min-w-0 justify-end text-right">
+              <IpRevealCopyRow
+                ip={data?.serverIp ?? null}
+                revealLabel={t("serverLocation.revealIp")}
+                hideLabel={t("serverLocation.hideIp")}
+                copyLabel={t("serverLocation.copyIp")}
+                copiedLabel={t("serverLocation.copiedIp")}
+              />
+            </dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground">{t("serverLocation.serverAsn")}</dt>
+            <dd className="max-w-[55%] text-right font-mono text-xs font-medium">
+              {data?.serverAsn ?? "—"}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground">{t("serverLocation.serverOrg")}</dt>
+            <dd className="max-w-[55%] text-right text-xs font-medium">
+              {data?.serverOrg ?? "—"}
+            </dd>
           </div>
         </dl>
       </CardContent>

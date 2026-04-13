@@ -2,7 +2,7 @@
 
 import { useTranslation } from "react-i18next";
 
-const GITHUB_URL = "https://github.com/StateByte/server-speedtest";
+const GITHUB_URL = "https://github.com/statebyte/server-speedtest";
 
 export function SiteFooter() {
   const { t } = useTranslation();

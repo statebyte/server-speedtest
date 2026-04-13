@@ -95,11 +95,15 @@ export interface ServerInfo {
   readonly serverCountry: string | null;
   readonly serverLat: number | null;
   readonly serverLon: number | null;
+  readonly serverAsn: string | null;
+  readonly serverOrg: string | null;
   readonly clientIp: string | null;
   readonly clientCity: string | null;
   readonly clientCountry: string | null;
   readonly clientLat: number | null;
   readonly clientLon: number | null;
+  readonly clientAsn: string | null;
+  readonly clientOrg: string | null;
   readonly protocol: string;
 }
 

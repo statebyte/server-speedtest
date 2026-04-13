@@ -35,12 +35,20 @@
     "server": "Server",
     "hostname": "Hostname",
     "yourIp": "Your IP",
+    "yourAsn": "Your ASN",
+    "yourOrg": "Your network",
+    "serverAsn": "Server ASN",
+    "serverOrg": "Server network",
     "serverIp": "Server IP",
+    "revealIp": "Show IP address",
+    "hideIp": "Hide IP address",
+    "copyIp": "Copy IP address",
+    "copiedIp": "Copied",
     "you": "You",
     "serverMarker": "Server",
     "midpointHint": "Midpoint (great-circle path is curved; map shows straight segment)",
     "mapFallback": "Server",
-    "mapUnavailable": "Map unavailable: server coordinates are unknown. Set SERVER_PUBLIC_IP or deploy behind a proxy that forwards client geo headers."
+    "mapUnavailable": "Map unavailable: could not resolve server coordinates from its public IP (server-side geolocation failed). Check outbound HTTPS; set SERVER_PUBLIC_IP if needed, or deploy behind a proxy that forwards client geo headers."
   },
   "controls": {
     "pause": "Pause",
