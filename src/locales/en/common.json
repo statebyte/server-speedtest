@@ -6,7 +6,11 @@
     "subtitleEnd": "(the host running this app)."
   },
   "footer": {
-    "copyright": "2026 @ statebyte"
+    "copyright": "2026 @ statebyte",
+    "download100": "100 MB",
+    "download200": "200 MB",
+    "download500": "500 MB",
+    "download1gb": "1 GB"
   },
   "language": {
     "label": "Language",

@@ -6,7 +6,11 @@
     "subtitleEnd": "(хоста, на котором запущено приложение)."
   },
   "footer": {
-    "copyright": "2026 @ statebyte"
+    "copyright": "2026 @ statebyte",
+    "download100": "100 МБ",
+    "download200": "200 МБ",
+    "download500": "500 МБ",
+    "download1gb": "1 ГБ"
   },
   "language": {
     "label": "Язык",
