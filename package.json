@@ -1,6 +1,6 @@
 {
   "name": "server-speedtest",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Server Speedtest",
   "author": "@statebyte <Omar El Sayed>",
   "private": true,
