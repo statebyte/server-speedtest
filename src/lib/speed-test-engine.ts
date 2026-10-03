@@ -1,4 +1,7 @@
-import { DEFAULT_MEASUREMENT_STEPS } from "@/config/speed-test-measurement";
+import {
+  buildProgressSegments,
+  DEFAULT_MEASUREMENT_STEPS,
+} from "@/config/speed-test-measurement";
 import { computeNetworkQuality } from "@/lib/network-quality";
 import { randomUUID } from "@/lib/random-uuid";
 import type {
@@ -99,6 +102,7 @@ export class SpeedTestEngine {
   /** Browser timer id (`window.setTimeout`); typed as number for DOM + Node typings overlap. */
   private plThrottleTimer: number | null = null;
   private currentPhase: SpeedTestPhase = { type: "idle" };
+  private completedUnits = 0;
 
   onRunningChange?: (running: boolean) => void;
   onResultsChange?: () => void;
@@ -154,6 +158,10 @@ export class SpeedTestEngine {
       packetLoss: this.lastPacketLoss,
       packetLossProgress: this.packetLossProgress,
       currentPhase: this.currentPhase,
+      progress: {
+        completed: this.completedUnits,
+        total: buildProgressSegments(this.steps).length,
+      },
       downloadPoints: this.downloadPoints,
       uploadPoints: this.uploadPoints,
       unloadedLatencyPoints: this.unloadedLatencyPoints,
@@ -698,6 +706,7 @@ export class SpeedTestEngine {
     this.plLivePackets = null;
     this.clearPacketLossThrottle();
     this.currentPhase = { type: "idle" };
+    this.completedUnits = 0;
     this.abort = false;
     this.emitChange();
     void this.play();
@@ -712,6 +721,7 @@ export class SpeedTestEngine {
     this.packetLossProgress = null;
     this.plLivePackets = null;
     this.clearPacketLossThrottle();
+    this.completedUnits = 0;
     this.onRunningChange?.(true);
 
     try {
@@ -727,6 +737,7 @@ export class SpeedTestEngine {
               ...this.unloadedLatencyPoints,
               { ms, index: this.unloadedLatencyPoints.length },
             ];
+            this.completedUnits++;
             this.emitChange();
           }
         } else if (step.type === "download") {
@@ -739,6 +750,7 @@ export class SpeedTestEngine {
               total: step.count,
             });
             await this.measureDownloadOnce(step.bytes);
+            this.completedUnits++;
           }
         } else if (step.type === "upload") {
           for (let i = 0; i < step.count; i++) {
@@ -750,6 +762,7 @@ export class SpeedTestEngine {
               total: step.count,
             });
             await this.measureUploadOnce(step.bytes);
+            this.completedUnits++;
           }
         } else if (step.type === "packetLoss") {
           await this.runPacketLoss(
@@ -757,6 +770,7 @@ export class SpeedTestEngine {
             step.timeoutMs,
             step.openTimeoutMs ?? 20_000,
           );
+          this.completedUnits++;
         }
       }
 

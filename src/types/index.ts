@@ -58,6 +58,13 @@ export type SpeedTestPhase =
     }
   | { readonly type: "done" };
 
+/** One chevron in the overall progress bar (one per ping / transfer / packet-loss run). */
+export interface ProgressSegment {
+  readonly kind: "latency" | "download" | "upload" | "packetLoss";
+  /** Transfer size in bytes (download/upload) or probe count (packetLoss). */
+  readonly size: number | null;
+}
+
 export interface NetworkQualityScores {
   readonly videoStreaming: QualityLabel;
   readonly onlineGaming: QualityLabel;
@@ -77,6 +84,8 @@ export interface SpeedTestResults {
   /** Live packet-loss grid; null when not running that step. */
   readonly packetLossProgress: PacketLossProgress | null;
   readonly currentPhase: SpeedTestPhase;
+  /** Number of finished progress segments out of `total`. */
+  readonly progress: { readonly completed: number; readonly total: number };
   readonly downloadPoints: readonly BandwidthPoint[];
   readonly uploadPoints: readonly BandwidthPoint[];
   readonly unloadedLatencyPoints: readonly LatencyPoint[];

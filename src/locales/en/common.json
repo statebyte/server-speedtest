@@ -26,6 +26,13 @@
     "idleHint": "Press Start to run download, upload, latency, jitter, and packet loss checks against this deployment.",
     "start": "Start"
   },
+  "progress": {
+    "latency": "Latency",
+    "download": "Download {{size}}",
+    "upload": "Upload {{size}}",
+    "packetLoss": "Packet loss",
+    "step": "Step {{current}} of {{total}}"
+  },
   "phases": {
     "latency": "Latency {{current}}/{{total}}",
     "download": "Download {{size}} ({{current}}/{{total}})",

@@ -13,6 +13,7 @@ import { PacketLossMeasurements } from "@/components/speed-test/packet-loss-meas
 import { RealtimeGraph } from "@/components/speed-test/realtime-graph";
 import { ServerLocation } from "@/components/speed-test/server-location";
 import { SpeedSummary } from "@/components/speed-test/speed-summary";
+import { TestProgressBar } from "@/components/speed-test/test-progress-bar";
 import { UploadMeasurements } from "@/components/speed-test/upload-measurements";
 
 export function SpeedTest() {
@@ -58,6 +59,7 @@ export function SpeedTest() {
               <>
                 <SpeedSummary results={results} />
                 <RealtimeGraph results={results} />
+                <TestProgressBar results={results} />
                 <ControlButtons
                   running={running}
                   paused={paused}

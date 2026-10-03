@@ -1,4 +1,4 @@
-import type { MeasurementStep } from "@/types";
+import type { MeasurementStep, ProgressSegment } from "@/types";
 
 /**
  * Repeat counts for each fixed-size segment of the speed test sequence.
@@ -87,3 +87,19 @@ export function buildMeasurementSteps(
 
 export const DEFAULT_MEASUREMENT_STEPS: readonly MeasurementStep[] =
   buildMeasurementSteps(DEFAULT_SPEED_TEST_MEASUREMENT_CONFIG);
+
+/** Flattens steps into one progress-bar segment per ping / transfer / packet-loss run. */
+export function buildProgressSegments(
+  steps: readonly MeasurementStep[],
+): readonly ProgressSegment[] {
+  const segments: ProgressSegment[] = [];
+  for (const step of steps) {
+    if (step.type === "packetLoss") {
+      segments.push({ kind: "packetLoss", size: step.count });
+    } else {
+      const size = step.type === "latency" ? null : step.bytes;
+      for (let i = 0; i < step.count; i++) segments.push({ kind: step.type, size });
+    }
+  }
+  return segments;
+}
